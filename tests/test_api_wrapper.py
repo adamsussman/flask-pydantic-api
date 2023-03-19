@@ -144,7 +144,7 @@ def test_body_and_path_vars() -> None:
     app = Flask("test_app")
 
     @app.post("/foo/<field1>")
-    @pydantic_api()
+    @pydantic_api(merge_path_parameters=True)
     def do_work(body: Body) -> Body:
         return body
 
@@ -159,14 +159,14 @@ def test_body_and_path_vars() -> None:
     assert response.json == {"field1": "bar", **body_in}
 
 
-def test_body_and_path_vars_keep_args() -> None:
+def test_body_and_path_vars_no_merge_args() -> None:
     class Body(BaseModel):
         field2: str
 
     app = Flask("test_app")
 
     @app.post("/foo/<field1>")
-    @pydantic_api(keep_path_arguments=True)
+    @pydantic_api(merge_path_parameters=False)
     def do_work(field1: str, body: Body) -> Body:
         assert field1 == "bar"
         return body

@@ -24,7 +24,7 @@ except ImportError:
 def get_request_args(
     view_kwargs: Dict[str, Any],
     for_model: Optional[Type[BaseModel]] = None,
-    keep_path_arguments: Optional[bool] = False,
+    merge_path_parameters: Optional[bool] = False,
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     args: Dict[str, Any] = {}
 
@@ -44,7 +44,7 @@ def get_request_args(
 
     # Merge path arguments into request data, if wanted
     if (
-        not keep_path_arguments
+        merge_path_parameters
         and view_kwargs
         and request.url_rule
         and request.url_rule.arguments
@@ -78,7 +78,7 @@ def pydantic_api(
     success_status_code: int = 200,
     maximum_expansion_depth=5,
     request_fields_name: str = "fields",
-    keep_path_arguments: bool = False,
+    merge_path_parameters: bool = False,
 ) -> Callable:
     def wrap(view_func: Callable) -> Callable:
         request_model_param_name, request_model, response_models = get_annotated_models(
@@ -91,7 +91,7 @@ def pydantic_api(
                 get_request_args(
                     for_model=request_model,
                     view_kwargs=kwargs,
-                    keep_path_arguments=keep_path_arguments,
+                    merge_path_parameters=merge_path_parameters,
                 )
                 or None
             )
