@@ -10,6 +10,8 @@ from openapi_schema_pydantic.util import (
 )
 from pydantic import BaseModel
 
+from .utils import get_annotated_models
+
 HTTP_METHODS = set(["get", "post", "patch", "delete", "put"])
 
 
@@ -27,32 +29,47 @@ def get_pydantic_api_path_operations() -> Any:
         path = re.sub(r"<([\w_]+)>", "{\\1}", rule.rule)
 
         parameters = []
-        request_body = None
+        request_body: Optional[Dict[str, Any]] = None
         responses: Dict[str, dict] = {}
 
         success_status_code = str(
             view_func.__pydantic_api__.get("success_status_code", "200")  # type: ignore
         )
 
-        for name, obj in view_func.__annotations__.items():
-            if issubclass(obj, BaseModel):
-                title = obj.__config__.title or obj.__name__
+        request_model_param_name, request_model, response_models = get_annotated_models(
+            view_func
+        )
+        if request_model:
+            title = request_model.__config__.title or request_model.__name__
+            request_body = {
+                "description": f"A {title}",
+                "content": {
+                    "application/json": {
+                        "schema": PydanticSchema(schema_class=request_model)
+                    }
+                },
+                "required": True,
+            }
 
-                body: Dict[str, Any] = {
-                    "description": f"A {title}",
-                    "content": {
-                        "application/json": {"schema": PydanticSchema(schema_class=obj)}
-                    },
-                }
+        if response_models:
+            title = response_models[0].__config__.title or response_models[0].__name__
 
-                if name == "return":
-                    responses[success_status_code] = body
+            responses[success_status_code] = {
+                "description": f"A {title}",
+                "content": {
+                    "application/json": {
+                        "schema": PydanticSchema(schema_class=response_models[0])
+                    }
+                },
+            }
 
-                else:
-                    body["required"] = True
-                    request_body = body
-
-            elif name in rule.arguments:
+        # path parameters
+        for name in view_func.__annotations__.keys():
+            if (
+                name in rule.arguments
+                and name != request_model_param_name
+                and name != "return"
+            ):
                 parameters.append(
                     {
                         "name": name,

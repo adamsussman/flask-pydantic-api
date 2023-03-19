@@ -1,5 +1,6 @@
 import json
 from textwrap import dedent
+from typing import Union
 
 import pytest
 from flask import Flask
@@ -233,3 +234,65 @@ def test_apidocs_get_viewer(basic_app: Flask) -> None:
         assert result.content_type.startswith("text/html")
 
         assert "rapidoc" in result.text
+
+
+def test_union_response_object(basic_app: Flask) -> None:
+    class ThisResponse(BaseModel):
+        this_field1: str
+
+    @basic_app.get("/api/foo/bar")
+    @pydantic_api()
+    def get_something() -> Union[dict, ThisResponse]:
+        return {"field1": "bar"}
+
+    with basic_app.app_context():
+        result = get_openapi_schema().dict()
+
+    assert "ThisResponse" in result["components"]["schemas"]
+    assert (
+        "this_field1" in result["components"]["schemas"]["ThisResponse"]["properties"]
+    )
+    assert "/api/foo/bar" in result["paths"]
+    assert (
+        result["paths"]["/api/foo/bar"]["get"]["responses"]["200"]["content"][
+            "application/json"
+        ]["media_type_schema"]["ref"]
+        == "#/components/schemas/ThisResponse"
+    )
+
+
+def test_path_args_merge(basic_app: Flask) -> None:
+    class Body(BaseModel):
+        arg1: str
+        field1: str
+
+    @basic_app.get("/foo/<arg1>")
+    @pydantic_api()
+    def get_foo(arg1: str, body: Body) -> Body:
+        return body
+
+    with basic_app.app_context():
+        result = get_openapi_schema().dict()
+
+    assert "arg1" in [
+        param["name"] for param in result["paths"]["/foo/{arg1}"]["get"]["parameters"]
+    ]
+    assert "arg1" in result["components"]["schemas"]["Body"]["properties"]
+
+
+def test_path_args_keep(basic_app: Flask) -> None:
+    class Body(BaseModel):
+        field1: str
+
+    @basic_app.get("/foo/<arg1>")
+    @pydantic_api()
+    def get_foo(arg1: str, body: Body) -> Body:
+        return body
+
+    with basic_app.app_context():
+        result = get_openapi_schema().dict()
+
+    assert "arg1" in [
+        param["name"] for param in result["paths"]["/foo/{arg1}"]["get"]["parameters"]
+    ]
+    assert "arg1" not in result["components"]["schemas"]["Body"]["properties"]
