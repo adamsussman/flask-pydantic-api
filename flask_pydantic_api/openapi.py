@@ -62,6 +62,10 @@ def get_pydantic_api_path_operations() -> Any:
                     }
                 },
             }
+        else:
+            responses[success_status_code] = {
+                "description": "Empty Response",
+            }
 
         # path parameters
         for name in view_func.__annotations__.keys():
