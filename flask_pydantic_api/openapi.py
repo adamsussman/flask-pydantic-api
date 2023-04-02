@@ -131,7 +131,7 @@ def add_response_schema(
     return construct_open_api_with_schema_class(openapi)
 
 
-def get_openapi_schema(info: Optional[Info] = None) -> OpenAPI:
+def get_openapi_schema(info: Optional[Info] = None, **kwargs: Any) -> OpenAPI:
     if not info:
         info = Info(
             title="API Documentation",
@@ -144,6 +144,7 @@ def get_openapi_schema(info: Optional[Info] = None) -> OpenAPI:
             {
                 "info": info,
                 "paths": paths,
+                **kwargs,
             }
         )
     )
