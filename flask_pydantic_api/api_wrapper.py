@@ -21,6 +21,13 @@ except ImportError:
     pass
 
 
+class EndpointConfig(BaseModel):
+    name: Optional[str]
+    tags: Optional[List[str]]
+    success_status_code: int
+    request_fields_name: str
+
+
 def get_request_args(
     view_kwargs: Dict[str, Any],
     for_model: Optional[Type[BaseModel]] = None,
@@ -170,11 +177,12 @@ def pydantic_api(
         # way to tell who is doing the wrapping and for what purpose.
         # This adds some markers that are useful for introspection of
         # endpoints (such as generating schema).
-        wrapped_endpoint.__pydantic_api__ = {  # type: ignore
-            "name": name,
-            "tags": tags,
-            "success_status_code": success_status_code,
-        }
+        wrapped_endpoint.__pydantic_api__ = EndpointConfig(  # type: ignore
+            name=name,
+            tags=tags,
+            success_status_code=success_status_code,
+            request_fields_name=request_fields_name,
+        )
 
         return wrapped_endpoint
 

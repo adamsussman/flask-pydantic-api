@@ -10,6 +10,7 @@ from openapi_schema_pydantic.util import (
 )
 from pydantic import BaseModel
 
+from .api_wrapper import EndpointConfig
 from .utils import get_annotated_models
 
 HTTP_METHODS = set(["get", "post", "patch", "delete", "put"])
@@ -20,7 +21,11 @@ def get_pydantic_api_path_operations() -> Any:
 
     for rule in current_app.url_map.iter_rules():
         view_func = current_app.view_functions[rule.endpoint]
-        if not getattr(view_func, "__pydantic_api__", None):
+        view_func_config: Optional[EndpointConfig] = getattr(
+            view_func, "__pydantic_api__", None
+        )
+
+        if not view_func_config:
             continue
 
         if not rule.methods:
@@ -32,9 +37,7 @@ def get_pydantic_api_path_operations() -> Any:
         request_body: Optional[Dict[str, Any]] = None
         responses: Dict[str, dict] = {}
 
-        success_status_code = str(
-            view_func.__pydantic_api__.get("success_status_code", "200")  # type: ignore
-        )
+        success_status_code = str(view_func_config.success_status_code)
 
         request_model_param_name, request_model, response_models = get_annotated_models(
             view_func
@@ -94,9 +97,9 @@ def get_pydantic_api_path_operations() -> Any:
                 continue
 
             paths[path][method] = {
-                "summary": view_func.__pydantic_api__.get("name"),  # type: ignore
+                "summary": view_func_config.name,
                 "requestBody": request_body,
-                "tags": view_func.__pydantic_api__.get("tags") or [],  # type: ignore
+                "tags": view_func_config.tags or [],
                 "parameters": parameters,
                 "responses": responses,
             }
