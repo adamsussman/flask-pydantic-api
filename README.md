@@ -256,10 +256,10 @@ Example:
                 default: ["field2"],
             ]
 
-        @app.get("/something")
-        @pydantic_api()
-        def get_something() -> MyResponse:
-            return MyResponse(field1="value1", field2="value2")
+    @app.get("/something")
+    @pydantic_api()
+    def get_something() -> MyResponse:
+        return MyResponse(field1="value1", field2="value2")
 ```
 
 ```console
