@@ -1,7 +1,39 @@
 from inspect import isclass
-from typing import Callable, List, Optional, Tuple, Type, Union, get_args, get_origin
+from typing import (
+    Any,
+    Callable,
+    Generator,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+    get_args,
+    get_origin,
+)
 
 from pydantic import BaseModel
+from werkzeug.datastructures import FileStorage
+
+
+class UploadedFile(FileStorage):
+    """A pydantic custom type wrapper for uploaded file streams in Flask/Werkzeug"""
+
+    @classmethod
+    def __get_validators__(cls) -> Generator[Callable, None, None]:
+        yield cls.validate
+
+    @classmethod
+    def __modify_schema__(cls, field_schema: dict) -> None:
+        field_schema["type"] = "string"
+        field_schema["format"] = "binary"
+
+    @classmethod
+    def validate(cls, value: Any) -> FileStorage:
+        if not isinstance(value, FileStorage):
+            raise TypeError("file required")
+
+        return value
 
 
 def get_annotated_models(
@@ -41,3 +73,11 @@ def get_annotated_models(
         response_models = [return_annotation]
 
     return request_model_param_name, request_model, response_models
+
+
+def model_has_uploaded_file_type(model: Type[BaseModel]) -> bool:
+    for field in model.__fields__.values():
+        if field.type_ == UploadedFile:
+            return True
+
+    return False

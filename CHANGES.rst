@@ -1,3 +1,11 @@
+Version 0.9.3
+-------------
+
+Pending
+
+- Add support for file uploads in models and openapi schema
+
+
 Version 0.9.2
 -------------
 

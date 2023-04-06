@@ -1,13 +1,14 @@
 import asyncio
 from functools import wraps
+from itertools import chain
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 from asgiref.sync import async_to_sync
-from flask import current_app, jsonify, make_response, request
+from flask import abort, current_app, jsonify, make_response, request
 from pydantic import BaseModel, ValidationError
 from pydantic.tools import parse_obj_as
 
-from .utils import get_annotated_models
+from .utils import get_annotated_models, model_has_uploaded_file_type
 
 augment_schema_with_fieldsets: Optional[Callable] = None
 render_fieldset_model: Optional[Callable] = None
@@ -35,8 +36,16 @@ def get_request_args(
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     args: Dict[str, Any] = {}
 
-    if request.is_json and request.json:
+    if for_model and model_has_uploaded_file_type(for_model):
+        if not request.content_type.lower().startswith("multipart/form-data"):
+            abort(415, "multipart/form-data expected")
+
+        for name, value in chain(request.files.items(), request.form.items()):
+            args[name] = value
+
+    elif request.is_json and request.json:
         args.update(request.json)
+
     elif request.query_string:
         args.update(request.args.to_dict())
         if for_model:

@@ -11,7 +11,7 @@ from openapi_schema_pydantic.util import (
 from pydantic import BaseModel
 
 from .api_wrapper import EndpointConfig
-from .utils import get_annotated_models
+from .utils import get_annotated_models, model_has_uploaded_file_type
 
 HTTP_METHODS = set(["get", "post", "patch", "delete", "put"])
 
@@ -44,12 +44,15 @@ def get_pydantic_api_path_operations() -> Any:
         )
         if request_model:
             title = request_model.__config__.title or request_model.__name__
+            content_type = (
+                "multipart/form-data"
+                if model_has_uploaded_file_type(request_model)
+                else "application/json"
+            )
             request_body = {
                 "description": f"A {title}",
                 "content": {
-                    "application/json": {
-                        "schema": PydanticSchema(schema_class=request_model)
-                    }
+                    content_type: {"schema": PydanticSchema(schema_class=request_model)}
                 },
                 "required": True,
             }

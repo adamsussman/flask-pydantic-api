@@ -8,8 +8,9 @@ A wrapper for flask methods allowing them to use Pydantic argment and response t
 2. Type annotation driven on the view function instead of the decorator.
 3. OpenAPI schema generation and documentation
 4. Smart response fields and expansions using [pydantic-enhanced-serializer](https://github.com/adamsussman/pydantic-enhanced-serializer).
-5. Async views
-6. Fold path parameters into input Pydantic models
+5. Fold path parameters into input Pydantic models
+6. File Uploads into Pydantic model fields
+7. Async views
 
 ## Installation
 
@@ -276,6 +277,37 @@ Example:
 
 See [Pydantic Enhanced Serializer](https://github.com/adamsussman/pydantic-enhanced-serializer)
 for more information.
+
+
+<a name="fileuploads"></a>
+### File Uploads
+
+File uploading with `multipart/form-data` content into pydantic request models is supported and
+the usual required and type checks will be done.
+
+Multiple files can be uploaded in the same request so long as each has a distinct field name.
+
+```python
+
+    from pydantic import BaseModel
+    from pydantic_api import UploadedFile, pydantic_api
+
+    class MyRequest(BaseModel):
+        photo: UploadedFile
+        caption: str
+
+    @app.post("/upload-photo"
+    @pyantic_api()
+    def upload_photo(body: MyRequest) -> MyResponse:
+        binary_file_data = body.photo.read()  # body.photo is werkzeug.datastructures.FileStorage object
+        file_name = body.photo.filename
+
+        ...
+```
+
+```console
+    curl -F photo=@some_file.jpg -F caption="A great picture!" http://localhsot:8080/upload-photo
+```
 
 
 ## License
