@@ -1,9 +1,12 @@
 Version 0.9.3
 -------------
 
-Pending
+Released 2023-04-13
 
-- Add support for file uploads in models and openapi schema
+- Add support for file uploads via multipart/form-data in models and openapi schema
+
+- Add `fields` parameter to openapi query strings and request bodies if response models
+  have fieldsets defined.
 
 
 Version 0.9.2
