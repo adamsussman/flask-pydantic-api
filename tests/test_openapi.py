@@ -296,3 +296,64 @@ def test_path_args_keep(basic_app: Flask) -> None:
         param["name"] for param in result["paths"]["/foo/{arg1}"]["get"]["parameters"]
     ]
     assert "arg1" not in result["components"]["schemas"]["Body"]["properties"]
+
+
+def test_fieldsets_added_to_query_string(basic_app: Flask) -> None:
+    class ResponseModel(BaseModel):
+        field1: str
+
+        class Config:
+            fieldsets = {
+                "default": ["*"],
+            }
+
+    @basic_app.get("/")
+    @pydantic_api()
+    def get_foo() -> ResponseModel:
+        return ResponseModel(field1="Foo")
+
+    with basic_app.app_context():
+        result = get_openapi_schema().dict()
+
+    fields_field = next(
+        iter(
+            [
+                param
+                for param in result["paths"]["/"]["get"]["parameters"]
+                if param["name"] == "fields"
+            ]
+        )
+    )
+    assert fields_field
+    assert fields_field["name"] == "fields"
+    assert fields_field["param_in"] == "query"
+    assert fields_field["required"] is False
+    assert fields_field["param_schema"]["type"] == "string"
+
+
+def test_fieldsets_added_to_request_body(basic_app: Flask) -> None:
+    class Body(BaseModel):
+        field1: str
+
+    class ResponseModel(BaseModel):
+        field1: str
+
+        class Config:
+            fieldsets = {
+                "default": ["*"],
+            }
+
+    @basic_app.post("/")
+    @pydantic_api()
+    def post_foo(body: Body) -> ResponseModel:
+        return ResponseModel(field1=body.field1)
+
+    with basic_app.app_context():
+        result = get_openapi_schema().dict()
+
+    fields_field = result["components"]["schemas"]["Body"]["properties"]["fields"]
+    assert fields_field
+    assert fields_field["title"] == "fields"
+    assert fields_field["type"] == "array"
+    assert fields_field["items"]["type"] == "string"
+    assert "fields" not in result["components"]["schemas"]["Body"]["required"]

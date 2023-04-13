@@ -1,6 +1,7 @@
 import re
 from collections import defaultdict
-from typing import Any, Dict, Optional, Type
+from functools import partial
+from typing import Any, Callable, Dict, Optional, Type, Union
 
 from flask import current_app
 from openapi_schema_pydantic import Info, MediaType, OpenAPI, Response
@@ -14,6 +15,12 @@ from .api_wrapper import EndpointConfig
 from .utils import get_annotated_models, model_has_uploaded_file_type
 
 HTTP_METHODS = set(["get", "post", "patch", "delete", "put"])
+
+model_has_fieldsets_defined: Optional[Callable] = None
+try:
+    from pydantic_enhanced_serializer.schema import model_has_fieldsets_defined
+except ImportError:
+    pass
 
 
 def get_pydantic_api_path_operations() -> Any:
@@ -42,6 +49,13 @@ def get_pydantic_api_path_operations() -> Any:
         request_model_param_name, request_model, response_models = get_annotated_models(
             view_func
         )
+
+        need_fields_parameter = bool(
+            model_has_fieldsets_defined
+            and response_models
+            and model_has_fieldsets_defined(response_models[0])
+        )
+
         if request_model:
             title = request_model.__config__.title or request_model.__name__
             content_type = (
@@ -49,6 +63,16 @@ def get_pydantic_api_path_operations() -> Any:
                 if model_has_uploaded_file_type(request_model)
                 else "application/json"
             )
+
+            if need_fields_parameter:
+                current_schema_extra: Union[Callable, dict, None] = getattr(
+                    request_model.__config__, "schema_extra", None
+                )
+
+                request_model.__config__.schema_extra = partial(
+                    request_body_add_fields_extra_schema, current_schema_extra
+                )
+
             request_body = {
                 "description": f"A {title}",
                 "content": {
@@ -68,6 +92,7 @@ def get_pydantic_api_path_operations() -> Any:
                     }
                 },
             }
+
         else:
             responses[success_status_code] = {
                 "description": "Empty Response",
@@ -98,6 +123,22 @@ def get_pydantic_api_path_operations() -> Any:
             method = method.lower()
             if method not in HTTP_METHODS:
                 continue
+
+            if method.lower() == "get" and need_fields_parameter and not request_body:
+                parameters.append(
+                    {
+                        "name": "fields",
+                        "description": (
+                            "Comma separated list of fields, fieldset and/or "
+                            "expansions to return in the response"
+                        ),
+                        "in": "query",
+                        "required": False,
+                        "schema": {
+                            "type": "string",
+                        },
+                    }
+                )
 
             paths[path][method] = {
                 "summary": view_func_config.name,
@@ -154,3 +195,40 @@ def get_openapi_schema(info: Optional[Info] = None, **kwargs: Any) -> OpenAPI:
             }
         )
     )
+
+
+def request_body_add_fields_extra_schema(
+    original_schema_extra: Union[Callable, dict, None],
+    schema: Dict[str, Any],
+    model: Type[BaseModel],
+) -> None:
+    if "properties" not in schema:
+        schema["properties"] = {}
+
+    if "fields" not in schema["properties"]:
+        schema["properties"]["fields"] = {
+            "title": "fields",
+            "description": "List of fields, fieldset and/or expansions to return in the response",
+            "type": "array",
+            "items": {
+                "type": "string",
+            },
+        }
+
+    if callable(original_schema_extra):
+        _deep_update(schema, original_schema_extra(schema, model) or {})
+
+    elif isinstance(original_schema_extra, dict):
+        _deep_update(schema, original_schema_extra)
+
+
+def _deep_update(into_dict: Dict[Any, Any], from_dict: Dict[Any, Any]) -> None:
+    for key in from_dict.keys():
+        if (
+            key in into_dict
+            and isinstance(from_dict[key], dict)
+            and isinstance(into_dict[key], dict)
+        ):
+            _deep_update(into_dict[key], from_dict[key])
+        else:
+            into_dict[key] = from_dict[key]
