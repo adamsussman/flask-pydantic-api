@@ -1,7 +1,7 @@
 Version 0.9.4
 -------------
 
-Release TBA
+Released 2023-05-17
 
 - Add support for extra openapi schema data in @pydantic_api argument
 
