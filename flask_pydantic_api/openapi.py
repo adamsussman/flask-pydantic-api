@@ -233,5 +233,11 @@ def _deep_update(into_dict: Dict[Any, Any], from_dict: Dict[Any, Any]) -> None:
             and isinstance(into_dict[key], dict)
         ):
             _deep_update(into_dict[key], from_dict[key])
+        elif (
+            key in into_dict
+            and isinstance(from_dict[key], list)
+            and isinstance(into_dict[key], list)
+        ):
+            into_dict[key].extend(from_dict[key])
         else:
             into_dict[key] = from_dict[key]
