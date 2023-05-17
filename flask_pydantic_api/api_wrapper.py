@@ -25,6 +25,7 @@ except ImportError:
 class EndpointConfig(BaseModel):
     name: Optional[str]
     tags: Optional[List[str]]
+    openapi_schema_extra: Optional[Dict[str, Any]]
     success_status_code: int
     request_fields_name: str
 
@@ -95,6 +96,7 @@ def pydantic_api(
     maximum_expansion_depth=5,
     request_fields_name: str = "fields",
     merge_path_parameters: bool = False,
+    openapi_schema_extra: Optional[Dict[str, Any]] = None,
 ) -> Callable:
     def wrap(view_func: Callable) -> Callable:
         request_model_param_name, request_model, response_models = get_annotated_models(
@@ -191,6 +193,7 @@ def pydantic_api(
             tags=tags,
             success_status_code=success_status_code,
             request_fields_name=request_fields_name,
+            openapi_schema_extra=openapi_schema_extra,
         )
 
         return wrapped_endpoint

@@ -357,3 +357,50 @@ def test_fieldsets_added_to_request_body(basic_app: Flask) -> None:
     assert fields_field["type"] == "array"
     assert fields_field["items"]["type"] == "string"
     assert "fields" not in result["components"]["schemas"]["Body"]["required"]
+
+
+def test_extra_schema(basic_app: Flask) -> None:
+    class Body(BaseModel):
+        field1: str
+
+    @basic_app.post("/")
+    @pydantic_api(
+        openapi_schema_extra={
+            "responses": {
+                "200": {
+                    "content": {
+                        "image/*": {
+                            "media_type_schema": {
+                                "type": "string",
+                                "schema_format": "binary",
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    )
+    def post_foo() -> Body:
+        return Body(field1="foo")
+
+    with basic_app.app_context():
+        result = get_openapi_schema().dict()
+
+    assert (
+        result["paths"]["/"]["post"]["responses"]["200"]["content"]["application/json"][
+            "media_type_schema"
+        ]["ref"]
+        == "#/components/schemas/Body"
+    )
+    assert (
+        result["paths"]["/"]["post"]["responses"]["200"]["content"]["image/*"][
+            "media_type_schema"
+        ]["type"]
+        == "string"
+    )
+    assert (
+        result["paths"]["/"]["post"]["responses"]["200"]["content"]["image/*"][
+            "media_type_schema"
+        ]["schema_format"]
+        == "binary"
+    )

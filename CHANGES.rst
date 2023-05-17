@@ -1,3 +1,11 @@
+Version 0.9.4
+-------------
+
+Release TBA
+
+- Add support for extra openapi schema data in @pydantic_api argument
+
+
 Version 0.9.3
 -------------
 

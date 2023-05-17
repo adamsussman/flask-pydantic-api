@@ -148,6 +148,9 @@ def get_pydantic_api_path_operations() -> Any:
                 "responses": responses,
             }
 
+            if view_func_config.openapi_schema_extra:
+                _deep_update(paths[path][method], view_func_config.openapi_schema_extra)
+
     return paths
 
 
