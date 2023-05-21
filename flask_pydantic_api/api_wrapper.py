@@ -149,12 +149,12 @@ def pydantic_api(
 
                 raise
 
-            if asyncio.iscoroutinefunction(view_func):
-                result = async_to_sync(view_func)(*args, **kwargs)
-            else:
-                result = view_func(*args, **kwargs)
-
             try:
+                if asyncio.iscoroutinefunction(view_func):
+                    result = async_to_sync(view_func)(*args, **kwargs)
+                else:
+                    result = view_func(*args, **kwargs)
+
                 if response_models and isinstance(result, dict):
                     result = response_models[0](**result)
 

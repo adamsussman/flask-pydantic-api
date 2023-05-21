@@ -1,3 +1,12 @@
+Version 0.9.5
+-------------
+
+Released TBA
+
+- Improve scope of catching pydantic validation errors when creating response models inside wrapper
+  handlers and unintentionally showing those errors to API callers.
+
+
 Version 0.9.4
 -------------
 
