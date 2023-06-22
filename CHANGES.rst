@@ -1,3 +1,11 @@
+Version 0.9.6
+-------------
+
+Released 2023-06-21
+
+- Use a longer lived event_loop to run the render/expansion phase and make sure that the
+  event loop is still open when the expander gathers its futures.
+
 Version 0.9.5
 -------------
 
