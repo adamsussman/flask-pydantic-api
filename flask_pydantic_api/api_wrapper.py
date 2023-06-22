@@ -160,11 +160,14 @@ def pydantic_api(
 
                 if isinstance(result, BaseModel):
                     if render_fieldset_model:
-                        result_data = async_to_sync(render_fieldset_model)(
-                            model=result,
-                            fieldsets=fieldsets,
-                            maximum_expansion_depth=maximum_expansion_depth,
-                            raise_error_on_expansion_not_found=False,
+                        loop = asyncio.get_event_loop()
+                        result_data = loop.run_until_complete(
+                            render_fieldset_model(
+                                model=result,
+                                fieldsets=fieldsets,
+                                maximum_expansion_depth=maximum_expansion_depth,
+                                raise_error_on_expansion_not_found=False,
+                            )
                         )
                     else:
                         result_data = result.dict()
