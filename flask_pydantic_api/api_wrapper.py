@@ -3,7 +3,6 @@ from functools import wraps
 from itertools import chain
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
-from asgiref.sync import async_to_sync
 from flask import abort, current_app, jsonify, make_response, request
 from pydantic import BaseModel, ValidationError
 from pydantic.tools import parse_obj_as
@@ -105,81 +104,88 @@ def pydantic_api(
 
         @wraps(view_func)
         def wrapped_endpoint(*args: Any, **kwargs: Any) -> Callable:
-            body, kwargs = (
-                get_request_args(
-                    for_model=request_model,
-                    view_kwargs=kwargs,
-                    merge_path_parameters=merge_path_parameters,
-                )
-                or None
-            )
-            fieldsets: List[str] = []
-
-            # Pydantic validation and casting of inputs
+            event_loop = asyncio.new_event_loop()
             try:
-                # fieldsets for pydantic_enhanced_serializer
-                if (
-                    body
-                    and render_fieldset_model
-                    and request_fields_name
-                    and request_fields_name in body
-                ):
-                    fieldsets = body.pop(request_fields_name, [])
-                    try:
-                        parse_obj_as(Union[str, List[str]], fieldsets)  # type: ignore
-                    except ValidationError as e:
-                        for error in e.errors():
-                            if error["loc"][0] == "__root__":
-                                error["loc"] = tuple(
-                                    [request_fields_name, *error["loc"][1:]]
-                                )
-                        raise
-
-                # api input model
-                if request_model and request_model_param_name:
-                    kwargs[request_model_param_name] = request_model(**body or {})
-
-            except ValidationError as e:
-                if current_app.config.get("FLASK_PYDANTIC_API_RENDER_ERRORS", False):
-                    response = jsonify({"errors": e.errors()})
-                    response.status_code = current_app.config.get(
-                        "FLASK_PYDANTIC_API_ERROR_STATUS_CODE", 400
+                body, kwargs = (
+                    get_request_args(
+                        for_model=request_model,
+                        view_kwargs=kwargs,
+                        merge_path_parameters=merge_path_parameters,
                     )
-                    return response
+                    or None
+                )
+                fieldsets: List[str] = []
 
-                raise
+                # Pydantic validation and casting of inputs
+                try:
+                    # fieldsets for pydantic_enhanced_serializer
+                    if (
+                        body
+                        and render_fieldset_model
+                        and request_fields_name
+                        and request_fields_name in body
+                    ):
+                        fieldsets = body.pop(request_fields_name, [])
+                        try:
+                            parse_obj_as(Union[str, List[str]], fieldsets)  # type: ignore
+                        except ValidationError as e:
+                            for error in e.errors():
+                                if error["loc"][0] == "__root__":
+                                    error["loc"] = tuple(
+                                        [request_fields_name, *error["loc"][1:]]
+                                    )
+                            raise
 
-            try:
-                if asyncio.iscoroutinefunction(view_func):
-                    result = async_to_sync(view_func)(*args, **kwargs)
-                else:
-                    result = view_func(*args, **kwargs)
+                    # api input model
+                    if request_model and request_model_param_name:
+                        kwargs[request_model_param_name] = request_model(**body or {})
 
-                if response_models and isinstance(result, dict):
-                    result = response_models[0](**result)
+                except ValidationError as e:
+                    if current_app.config.get(
+                        "FLASK_PYDANTIC_API_RENDER_ERRORS", False
+                    ):
+                        response = jsonify({"errors": e.errors()})
+                        response.status_code = current_app.config.get(
+                            "FLASK_PYDANTIC_API_ERROR_STATUS_CODE", 400
+                        )
+                        return response
 
-                if isinstance(result, BaseModel):
-                    if render_fieldset_model:
-                        loop = asyncio.get_event_loop()
-                        result_data = loop.run_until_complete(
-                            render_fieldset_model(
-                                model=result,
-                                fieldsets=fieldsets,
-                                maximum_expansion_depth=maximum_expansion_depth,
-                                raise_error_on_expansion_not_found=False,
-                            )
+                    raise
+
+                try:
+                    if asyncio.iscoroutinefunction(view_func):
+                        result: Any = event_loop.run_until_complete(
+                            view_func(*args, **kwargs)
                         )
                     else:
-                        result_data = result.dict()
+                        result = view_func(*args, **kwargs)
 
-                    result = make_response(result_data, success_status_code)
+                    if response_models and isinstance(result, dict):
+                        result = response_models[0](**result)
 
-            except ValidationError as e:
-                raise Exception(
-                    "pydantic model error on api response serialization; "
-                    f"endpoint: {request.endpoint}; "
-                    f"error: {str(e)}"
-                )
+                    if isinstance(result, BaseModel):
+                        if render_fieldset_model:
+                            result_data = event_loop.run_until_complete(
+                                render_fieldset_model(
+                                    model=result,
+                                    fieldsets=fieldsets,
+                                    maximum_expansion_depth=maximum_expansion_depth,
+                                    raise_error_on_expansion_not_found=False,
+                                )
+                            )
+                        else:
+                            result_data = result.dict()
+
+                        result = make_response(result_data, success_status_code)
+
+                except ValidationError as e:
+                    raise Exception(
+                        "pydantic model error on api response serialization; "
+                        f"endpoint: {request.endpoint}; "
+                        f"error: {str(e)}"
+                    )
+            finally:
+                event_loop.close()
 
             return result
 

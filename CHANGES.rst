@@ -1,3 +1,11 @@
+Version 0.9.7
+-------------
+
+Released 2023-06-22
+
+- Use even longer lived and wider scoped event loop.  Use our own event loop, not the system's
+
+
 Version 0.9.6
 -------------
 
