@@ -1,6 +1,8 @@
 Version 0.10.0
 --------------
 
+Released 2023-10-12
+
 - Added ability to get at the `fields` request value by adding a field: List[str] argument
   to the @pydantic_api wrapped work function.
 
