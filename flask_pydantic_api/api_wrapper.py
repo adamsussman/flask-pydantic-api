@@ -8,7 +8,11 @@ from flask import abort, current_app, jsonify, make_response, request
 from pydantic import BaseModel, ValidationError
 from pydantic.tools import parse_obj_as
 
-from .utils import get_annotated_models, model_has_uploaded_file_type
+from .utils import (
+    function_has_fields_in_signature,
+    get_annotated_models,
+    model_has_uploaded_file_type,
+)
 
 augment_schema_with_fieldsets: Optional[Callable] = None
 render_fieldset_model: Optional[Callable] = None
@@ -124,7 +128,12 @@ def pydantic_api(
                     and request_fields_name
                     and request_fields_name in body
                 ):
-                    fieldsets = body.pop(request_fields_name, [])
+                    fieldsets_input = body.pop(request_fields_name, [])
+                    fieldsets = (
+                        fieldsets_input.split(",")
+                        if isinstance(fieldsets_input, str)
+                        else fieldsets_input
+                    )
                     try:
                         parse_obj_as(Union[str, List[str]], fieldsets)  # type: ignore
                     except ValidationError as e:
@@ -148,6 +157,9 @@ def pydantic_api(
                     return response
 
                 raise
+
+            if function_has_fields_in_signature(view_func, request_fields_name):
+                kwargs[request_fields_name] = fieldsets
 
             try:
                 if asyncio.iscoroutinefunction(view_func):

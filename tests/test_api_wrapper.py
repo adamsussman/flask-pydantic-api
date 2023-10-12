@@ -273,3 +273,84 @@ def test_async_view() -> None:
         "field1": "field1 value",
         "field2": "field2 value",
     }
+
+
+def test_fields_in_signature() -> None:
+    class Response(BaseModel):
+        field1: str
+        field2: str
+
+    app = Flask("test_app")
+
+    @app.get("/")
+    @pydantic_api()
+    def do_work(fields: List[str]) -> Response:
+        assert fields == ["a", "b", "c.d"]
+
+        return Response(
+            field1="field1 value",
+            field2="field2 value",
+        )
+
+    client = app.test_client()
+    response = client.get("/?fields=a,b,c.d")
+
+    assert response.status_code == 200, response.json
+    assert response.json == {
+        "field1": "field1 value",
+        "field2": "field2 value",
+    }
+
+
+def test_post_fields_in_signature() -> None:
+    class Response(BaseModel):
+        field1: str
+        field2: str
+
+    app = Flask("test_app")
+
+    @app.post("/")
+    @pydantic_api()
+    def do_work(fields: List[str]) -> Response:
+        assert fields == ["a", "b", "c.d"]
+
+        return Response(
+            field1="field1 value",
+            field2="field2 value",
+        )
+
+    client = app.test_client()
+    response = client.post("/", json={"fields": ["a", "b", "c.d"]})
+
+    assert response.status_code == 200, response.json
+    assert response.json == {
+        "field1": "field1 value",
+        "field2": "field2 value",
+    }
+
+
+def test_empty_fields_in_signature() -> None:
+    class Response(BaseModel):
+        field1: str
+        field2: str
+
+    app = Flask("test_app")
+
+    @app.get("/")
+    @pydantic_api()
+    def do_work(fields: List[str]) -> Response:
+        assert fields == []
+
+        return Response(
+            field1="field1 value",
+            field2="field2 value",
+        )
+
+    client = app.test_client()
+    response = client.get("/")
+
+    assert response.status_code == 200, response.json
+    assert response.json == {
+        "field1": "field1 value",
+        "field2": "field2 value",
+    }

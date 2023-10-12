@@ -46,7 +46,7 @@ def get_annotated_models(
     view_model_args = [
         k
         for k, v in func.__annotations__.items()
-        if v and k != "return" and issubclass(v, BaseModel)
+        if v and k != "return" and isclass(v) and issubclass(v, BaseModel)
     ]
 
     if len(view_model_args) > 1:
@@ -73,6 +73,10 @@ def get_annotated_models(
         response_models = [return_annotation]
 
     return request_model_param_name, request_model, response_models
+
+
+def function_has_fields_in_signature(func: Callable, request_fields_name: str) -> bool:
+    return request_fields_name in func.__annotations__
 
 
 def model_has_uploaded_file_type(model: Type[BaseModel]) -> bool:

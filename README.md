@@ -62,6 +62,18 @@ $ pip install flask-pydantic-api[serializer]
     )
     def do_work_post(body: RequestBody) -> ResponseBody:
         return ResponseBody(....)
+
+    # Get direct access to request `fields` in work function
+    # POST with body
+    @app.post("/api/something_else")
+    @pydantic_api(
+        name="Go do something",        # Name of path operation in OpenAPI schema
+        tags=["MyTag"],                # OpenAPI tags
+    )
+    def do_work_post(body: RequestBody, fields: List[str]) -> ResponseBody:
+        fields = [list of request fields]
+        return ResponseBody(....)
+
 ```
 
 ## OpenAPI
