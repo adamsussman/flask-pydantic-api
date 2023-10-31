@@ -15,7 +15,7 @@ def get_openapi_spec() -> Response:
 
     return make_response(
         (
-            spec.json(by_alias=True, exclude_none=True, indent=2),
+            spec.model_dump_json(by_alias=True, exclude_none=True, indent=2),
             {"content-type": "application/json"},
         )
     )

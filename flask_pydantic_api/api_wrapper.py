@@ -1,12 +1,12 @@
 import asyncio
 from functools import wraps
+from inspect import isclass
 from itertools import chain
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, get_origin
 
 from asgiref.sync import async_to_sync
 from flask import abort, current_app, jsonify, make_response, request
-from pydantic import BaseModel, ValidationError
-from pydantic.tools import parse_obj_as
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from .utils import (
     function_has_fields_in_signature,
@@ -18,10 +18,7 @@ augment_schema_with_fieldsets: Optional[Callable] = None
 render_fieldset_model: Optional[Callable] = None
 
 try:
-    from pydantic_enhanced_serializer import (
-        augment_schema_with_fieldsets,
-        render_fieldset_model,
-    )
+    from pydantic_enhanced_serializer import render_fieldset_model
 except ImportError:
     pass
 
@@ -58,8 +55,11 @@ def get_request_args(
                 {
                     k: v
                     for k, v in request.args.to_dict(flat=False).items()
-                    if k in for_model.__fields__
-                    and for_model.__fields__[k].is_complex()
+                    if k in for_model.model_fields
+                    and for_model.model_fields[k].annotation
+                    and (origin := get_origin(for_model.model_fields[k].annotation))
+                    and isclass(origin)
+                    and issubclass(origin, (list, set, frozenset, dict))
                 }
             )
 
@@ -77,18 +77,6 @@ def get_request_args(
             view_kwargs.pop(argument_name, None)
 
     return args, view_kwargs
-
-
-# pydantic_enhanced_serializer: Add extra schema information for the openapi
-def augment_pydantic_enhanced_serializer_model_schemas(
-    *models: Optional[Type[BaseModel]],
-) -> None:
-    if not augment_schema_with_fieldsets:
-        return
-
-    for model in models:
-        if model:
-            augment_schema_with_fieldsets(model)
 
 
 # decorator that can be composed with regular Flask @blueprint.get/post/etc decorators.
@@ -134,15 +122,8 @@ def pydantic_api(
                         if isinstance(fieldsets_input, str)
                         else fieldsets_input
                     )
-                    try:
-                        parse_obj_as(Union[str, List[str]], fieldsets)  # type: ignore
-                    except ValidationError as e:
-                        for error in e.errors():
-                            if error["loc"][0] == "__root__":
-                                error["loc"] = tuple(
-                                    [request_fields_name, *error["loc"][1:]]
-                                )
-                        raise
+                    adapter = TypeAdapter(Dict[str, List[str]])
+                    adapter.validate_python({request_fields_name: fieldsets})
 
                 # api input model
                 if request_model and request_model_param_name:
@@ -179,7 +160,7 @@ def pydantic_api(
                             raise_error_on_expansion_not_found=False,
                         )
                     else:
-                        result_data = result.dict()
+                        result_data = result.model_dump_json()
 
                     result = make_response(result_data, success_status_code)
 
@@ -191,10 +172,6 @@ def pydantic_api(
                 )
 
             return result
-
-        augment_pydantic_enhanced_serializer_model_schemas(
-            request_model, *(response_models or [])
-        )
 
         # Normally wrapping functions with decorators leaves no easy
         # way to tell who is doing the wrapping and for what purpose.

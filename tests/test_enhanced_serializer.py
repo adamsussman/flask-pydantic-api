@@ -1,5 +1,8 @@
+from typing import ClassVar
+
 from flask import Flask
 from pydantic import BaseModel
+from pydantic_enhanced_serializer import FieldsetConfig
 
 from flask_pydantic_api import pydantic_api
 
@@ -28,16 +31,12 @@ def test_validate_fieldsets() -> None:
 
     # No config to serialize errors
     assert response.status_code == 400, response.json
-    assert response.json == {
-        "errors": [
-            {"loc": ["fields"], "msg": "str type expected", "type": "type_error.str"},
-            {
-                "loc": ["fields"],
-                "msg": "value is not a valid list",
-                "type": "type_error.list",
-            },
-        ]
-    }
+    assert response.json
+
+    assert len(response.json["errors"]) == 1
+    assert response.json["errors"][0]["loc"] == ["fields"]
+    assert response.json["errors"][0]["msg"] == "Input should be a valid list"
+    assert response.json["errors"][0]["type"] == "list_type"
 
 
 def test_validate_honor_fields() -> None:
@@ -45,10 +44,11 @@ def test_validate_honor_fields() -> None:
         field1: str
         field2: str
 
-        class Config:
-            fieldsets: dict = {
+        fieldset_config: ClassVar = FieldsetConfig(
+            fieldsets={
                 "default": [],
             }
+        )
 
     app = Flask("test_app")
 
@@ -68,4 +68,6 @@ def test_validate_honor_fields() -> None:
 
     # No config to serialize errors
     assert response.status_code == 200, response.json
+    assert response.json
+
     assert response.json == {"field2": "value2"}

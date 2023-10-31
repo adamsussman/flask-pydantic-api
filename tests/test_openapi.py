@@ -1,10 +1,11 @@
 import json
 from textwrap import dedent
-from typing import Union
+from typing import ClassVar, Union
 
 import pytest
 from flask import Flask
 from pydantic import BaseModel
+from pydantic_enhanced_serializer import FieldsetConfig
 
 import flask_pydantic_api.apidocs_views
 from flask_pydantic_api import pydantic_api
@@ -34,9 +35,12 @@ def test_basic_schema(basic_app: Flask) -> None:
     with basic_app.app_context():
         result = get_openapi_schema()
 
-    result_json = result.json(
-        by_alias=True, exclude_none=True, indent=4, sort_keys=True
+    result_json = json.dumps(
+        result.model_dump(by_alias=True, exclude_none=True),
+        indent=4,
+        sort_keys=True,
     )
+
     assert (
         result_json
         == dedent(
@@ -110,8 +114,10 @@ def test_add_error_response(basic_app: Flask) -> None:
         result = get_openapi_schema()
         result = add_response_schema(result, "400", SpecialError)
 
-    result_json = result.json(
-        by_alias=True, exclude_none=True, indent=4, sort_keys=True
+    result_json = json.dumps(
+        result.model_dump(by_alias=True, exclude_none=True),
+        indent=4,
+        sort_keys=True,
     )
     assert (
         result_json
@@ -246,7 +252,7 @@ def test_union_response_object(basic_app: Flask) -> None:
         return {"field1": "bar"}
 
     with basic_app.app_context():
-        result = get_openapi_schema().dict()
+        result = get_openapi_schema().model_dump()
 
     assert "ThisResponse" in result["components"]["schemas"]
     assert (
@@ -272,7 +278,7 @@ def test_path_args_merge(basic_app: Flask) -> None:
         return body
 
     with basic_app.app_context():
-        result = get_openapi_schema().dict()
+        result = get_openapi_schema().model_dump()
 
     assert "arg1" in [
         param["name"] for param in result["paths"]["/foo/{arg1}"]["get"]["parameters"]
@@ -290,7 +296,7 @@ def test_path_args_keep(basic_app: Flask) -> None:
         return body
 
     with basic_app.app_context():
-        result = get_openapi_schema().dict()
+        result = get_openapi_schema().model_dump()
 
     assert "arg1" in [
         param["name"] for param in result["paths"]["/foo/{arg1}"]["get"]["parameters"]
@@ -302,10 +308,11 @@ def test_fieldsets_added_to_query_string(basic_app: Flask) -> None:
     class ResponseModel(BaseModel):
         field1: str
 
-        class Config:
-            fieldsets = {
+        fieldset_config: ClassVar = FieldsetConfig(
+            fieldsets={
                 "default": ["*"],
             }
+        )
 
     @basic_app.get("/")
     @pydantic_api()
@@ -313,7 +320,7 @@ def test_fieldsets_added_to_query_string(basic_app: Flask) -> None:
         return ResponseModel(field1="Foo")
 
     with basic_app.app_context():
-        result = get_openapi_schema().dict()
+        result = get_openapi_schema().model_dump()
 
     fields_field = next(
         iter(
@@ -338,10 +345,11 @@ def test_fieldsets_added_to_request_body(basic_app: Flask) -> None:
     class ResponseModel(BaseModel):
         field1: str
 
-        class Config:
-            fieldsets = {
+        fieldset_config: ClassVar = FieldsetConfig(
+            fieldsets={
                 "default": ["*"],
             }
+        )
 
     @basic_app.post("/")
     @pydantic_api()
@@ -349,7 +357,7 @@ def test_fieldsets_added_to_request_body(basic_app: Flask) -> None:
         return ResponseModel(field1=body.field1)
 
     with basic_app.app_context():
-        result = get_openapi_schema().dict()
+        result = get_openapi_schema().model_dump()
 
     fields_field = result["components"]["schemas"]["Body"]["properties"]["fields"]
     assert fields_field
@@ -384,7 +392,7 @@ def test_extra_schema(basic_app: Flask) -> None:
         return Body(field1="foo")
 
     with basic_app.app_context():
-        result = get_openapi_schema().dict()
+        result = get_openapi_schema().model_dump()
 
     assert (
         result["paths"]["/"]["post"]["responses"]["200"]["content"]["application/json"][

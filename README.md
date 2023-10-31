@@ -260,15 +260,19 @@ the `maximum_expansion_depth` parameter of `@pydantic_api`
 Example:
 
 ```python
+   from typing import ClassVar
+   from pydantic import BaseModel
+   from pydantic_enhanced_serializer import FielsetConfig
 
     class MyResponse(BaseModel):
         field1: str
         field2: str
 
-        class Config:
-            fieldsets = [
+        fieldset_config: ClassVar = FieldsetConfig(
+            fieldsets = {
                 default: ["field2"],
-            ]
+            }
+        )
 
     @app.get("/something")
     @pydantic_api()

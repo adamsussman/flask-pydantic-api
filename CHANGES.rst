@@ -1,3 +1,13 @@
+Version 1.0.0
+-------------
+
+Released TBA
+
+BREAKING CHANGES
+
+- Conversion to Pydantic 2.0.
+
+
 Version 0.10.0
 --------------
 

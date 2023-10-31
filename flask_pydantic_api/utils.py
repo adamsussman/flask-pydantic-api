@@ -2,7 +2,6 @@ from inspect import isclass
 from typing import (
     Any,
     Callable,
-    Generator,
     List,
     Optional,
     Tuple,
@@ -12,7 +11,9 @@ from typing import (
     get_origin,
 )
 
-from pydantic import BaseModel
+from pydantic import BaseModel, GetCoreSchemaHandler
+from pydantic.json_schema import GetJsonSchemaHandler, JsonSchemaValue
+from pydantic_core import CoreSchema, PydanticCustomError, core_schema
 from werkzeug.datastructures import FileStorage
 
 
@@ -20,19 +21,22 @@ class UploadedFile(FileStorage):
     """A pydantic custom type wrapper for uploaded file streams in Flask/Werkzeug"""
 
     @classmethod
-    def __get_validators__(cls) -> Generator[Callable, None, None]:
-        yield cls.validate
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> CoreSchema:
+        return core_schema.no_info_plain_validator_function(cls.validate)
 
-    @classmethod
-    def __modify_schema__(cls, field_schema: dict) -> None:
-        field_schema["type"] = "string"
-        field_schema["format"] = "binary"
+    def __get_pydantic_json_schema__(
+        cls, core_schema: core_schema.JsonSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        json_schema = handler(core_schema)
+        json_schema.update(type="string", format="binary")
+        return json_schema
 
     @classmethod
     def validate(cls, value: Any) -> FileStorage:
         if not isinstance(value, FileStorage):
-            raise TypeError("file required")
-
+            raise PydanticCustomError("file_type", "file required")
         return value
 
 
@@ -64,9 +68,9 @@ def get_annotated_models(
 
     if get_origin(return_annotation) == Union:
         response_models = [
-            type_
-            for type_ in get_args(return_annotation)
-            if isclass(type_) and issubclass(type_, BaseModel)
+            annotation
+            for annotation in get_args(return_annotation)
+            if isclass(annotation) and issubclass(annotation, BaseModel)
         ]
 
     elif isclass(return_annotation) and issubclass(return_annotation, BaseModel):
@@ -80,8 +84,8 @@ def function_has_fields_in_signature(func: Callable, request_fields_name: str) -
 
 
 def model_has_uploaded_file_type(model: Type[BaseModel]) -> bool:
-    for field in model.__fields__.values():
-        if field.type_ == UploadedFile:
+    for field in model.model_fields.values():
+        if field.annotation == UploadedFile:
             return True
 
     return False

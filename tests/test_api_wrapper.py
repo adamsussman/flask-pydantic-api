@@ -129,11 +129,12 @@ def test_validate_fail_post() -> None:
 
     response = client.post("/", json=body_in)
     assert response.status_code == 400
-    assert response.json == {
-        "errors": [
-            {"loc": ["field2"], "msg": "field required", "type": "value_error.missing"}
-        ]
-    }
+    assert response.json
+
+    assert len(response.json["errors"]) == 1
+    assert response.json["errors"][0]["loc"] == ["field2"]
+    assert response.json["errors"][0]["type"] == "missing"
+    assert response.json["errors"][0]["msg"] == "Field required"
 
 
 def test_body_and_path_vars() -> None:
@@ -226,9 +227,7 @@ def test_response_fails_validation_dict(caplog) -> None:
 
     assert response.status_code == 500, response.json
     assert "pydantic model error on api response serialization" in caplog.text
-    assert (
-        "Response\nfield1\n  field required (type=value_error.missing)" in caplog.text
-    )
+    assert "Response\nfield1\n  Field required [type=missing" in caplog.text
 
 
 def test_response_non_model(caplog) -> None:

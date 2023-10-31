@@ -4,11 +4,8 @@ from functools import partial
 from typing import Any, Callable, Dict, Optional, Type, Union
 
 from flask import current_app
-from openapi_schema_pydantic import Info, MediaType, OpenAPI, Response
-from openapi_schema_pydantic.util import (
-    PydanticSchema,
-    construct_open_api_with_schema_class,
-)
+from openapi_pydantic import Info, MediaType, OpenAPI, Response
+from openapi_pydantic.util import PydanticSchema, construct_open_api_with_schema_class
 from pydantic import BaseModel
 
 from .api_wrapper import EndpointConfig
@@ -57,7 +54,7 @@ def get_pydantic_api_path_operations() -> Any:
         )
 
         if request_model:
-            title = request_model.__config__.title or request_model.__name__
+            title = request_model.model_config.get("title") or request_model.__name__
             content_type = (
                 "multipart/form-data"
                 if model_has_uploaded_file_type(request_model)
@@ -65,30 +62,37 @@ def get_pydantic_api_path_operations() -> Any:
             )
 
             if need_fields_parameter:
-                current_schema_extra: Union[Callable, dict, None] = getattr(
-                    request_model.__config__, "schema_extra", None
-                )
+                current_schema_extra: Union[
+                    Callable, dict, None
+                ] = request_model.model_config.get("json_schema_extra", None)
 
-                request_model.__config__.schema_extra = partial(
+                request_model.model_config["json_schema_extra"] = partial(
                     request_body_add_fields_extra_schema, current_schema_extra
                 )
 
             request_body = {
                 "description": f"A {title}",
                 "content": {
-                    content_type: {"schema": PydanticSchema(schema_class=request_model)}
+                    content_type: {
+                        "schema": PydanticSchema(schema_class=request_model, enum=None)
+                    }
                 },
                 "required": True,
             }
 
         if response_models:
-            title = response_models[0].__config__.title or response_models[0].__name__
+            title = (
+                response_models[0].model_config.get("title")
+                or response_models[0].__name__
+            )
 
             responses[success_status_code] = {
                 "description": f"A {title}",
                 "content": {
                     "application/json": {
-                        "schema": PydanticSchema(schema_class=response_models[0])
+                        "schema": PydanticSchema(
+                            schema_class=response_models[0], enum=None
+                        )
                     }
                 },
             }
@@ -160,7 +164,7 @@ def add_response_schema(
     if not openapi.paths:
         return openapi
 
-    title = schema.__config__.title or schema.__name__
+    title = schema.model_config.get("title") or schema.__name__
 
     for path_item in openapi.paths.values():
         for method in HTTP_METHODS:
@@ -173,7 +177,7 @@ def add_response_schema(
                     description=f"A {title}",
                     content={
                         "application/json": MediaType(
-                            schema=PydanticSchema(schema_class=schema)
+                            schema=PydanticSchema(schema_class=schema, enum=None)
                         )
                     },
                 )
@@ -190,12 +194,10 @@ def get_openapi_schema(info: Optional[Info] = None, **kwargs: Any) -> OpenAPI:
     paths = get_pydantic_api_path_operations()
 
     return construct_open_api_with_schema_class(
-        OpenAPI.parse_obj(
-            {
-                "info": info,
-                "paths": paths,
-                **kwargs,
-            }
+        OpenAPI(
+            info=info,
+            paths=paths,
+            **kwargs,
         )
     )
 

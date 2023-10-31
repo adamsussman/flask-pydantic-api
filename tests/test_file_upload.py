@@ -80,15 +80,12 @@ def test_file_field_missing() -> None:
     )
 
     assert response.status_code == 400
-    assert response.json == {
-        "errors": [
-            {
-                "loc": ["some_file"],
-                "msg": "field required",
-                "type": "value_error.missing",
-            }
-        ]
-    }
+    assert response.json
+
+    assert len(response.json["errors"]) == 1
+    assert response.json["errors"][0]["loc"] == ["some_file"]
+    assert response.json["errors"][0]["msg"] == "Field required"
+    assert response.json["errors"][0]["type"] == "missing"
 
 
 def test_file_upload_wrong_field_type() -> None:
@@ -109,9 +106,12 @@ def test_file_upload_wrong_field_type() -> None:
     )
 
     assert response.status_code == 400
-    assert response.json == {
-        "errors": [{"loc": ["some_file"], "msg": "file required", "type": "type_error"}]
-    }
+    assert response.json
+
+    assert len(response.json["errors"]) == 1
+    assert response.json["errors"][0]["loc"] == ["some_file"]
+    assert response.json["errors"][0]["msg"] == "file required"
+    assert response.json["errors"][0]["type"] == "file_type"
 
 
 def test_multi_file_upload() -> None:
