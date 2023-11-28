@@ -1,7 +1,7 @@
 Version 1.0.0
 -------------
 
-Released TBA
+Released 2023-11-27
 
 BREAKING CHANGES
 
