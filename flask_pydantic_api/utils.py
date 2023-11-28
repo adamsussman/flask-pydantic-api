@@ -24,8 +24,11 @@ class UploadedFile(FileStorage):
     def __get_pydantic_core_schema__(
         cls, source_type: Any, handler: GetCoreSchemaHandler
     ) -> CoreSchema:
-        return core_schema.no_info_plain_validator_function(cls.validate)
+        return core_schema.no_info_before_validator_function(
+            cls.validate, core_schema.AnySchema(type="any")
+        )
 
+    @classmethod
     def __get_pydantic_json_schema__(
         cls, core_schema: core_schema.JsonSchema, handler: GetJsonSchemaHandler
     ) -> JsonSchemaValue:
