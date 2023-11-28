@@ -126,6 +126,7 @@ Note that you may wish to customize your schema results more than this module pr
 * `request_fields_name`: str = "fields" - If using `pydantic-enhanced-serialzer` this is the name of the request parameter that controls the fieldsets returned. See [Using the Enhanced Serializer](#serializer).
 * `maximum_expansion_depth`: int = 5 - If using `pydantic-enhanced-serialzer` this controls how deep expansions can go. See [Using the Enhanced Serializer](#serializer).
 * `openapi_schema_extra`: Optional[Dict[str, Any]] - Optional extra data to add to the openapi schema.  Will be merged with automatically generated schema data at `paths.<path>.<method>`.
+* `model_dump_kwargs`: Optional[Dict[str, Any]] - Optional kwargs will be passed to Pydantic's `model_dump` as arguments when serializing a BaseModel returned by this endpoint.
 
 Flask configuration:
 
