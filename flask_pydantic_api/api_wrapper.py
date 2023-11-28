@@ -24,17 +24,19 @@ except ImportError:
 
 
 class EndpointConfig(BaseModel):
-    name: Optional[str]
-    tags: Optional[List[str]]
-    openapi_schema_extra: Optional[Dict[str, Any]]
+    name: Optional[str] = None
+    tags: Optional[List[str]] = None
+    openapi_schema_extra: Optional[Dict[str, Any]] = None
     success_status_code: int
     request_fields_name: str
+    model_dump_kwargs: Optional[Dict[str, Any]] = None
 
 
 def get_request_args(
     view_kwargs: Dict[str, Any],
     for_model: Optional[Type[BaseModel]] = None,
     merge_path_parameters: Optional[bool] = False,
+    request_model_param_name: Optional[str] = None,
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     args: Dict[str, Any] = {}
 
@@ -89,6 +91,7 @@ def pydantic_api(
     request_fields_name: str = "fields",
     merge_path_parameters: bool = False,
     openapi_schema_extra: Optional[Dict[str, Any]] = None,
+    model_dump_kwargs: Optional[Dict[str, Any]] = None,
 ) -> Callable:
     def wrap(view_func: Callable) -> Callable:
         request_model_param_name, request_model, response_models = get_annotated_models(
@@ -102,6 +105,7 @@ def pydantic_api(
                     for_model=request_model,
                     view_kwargs=kwargs,
                     merge_path_parameters=merge_path_parameters,
+                    request_model_param_name=request_model_param_name,
                 )
                 or None
             )
@@ -158,9 +162,12 @@ def pydantic_api(
                             fieldsets=fieldsets,
                             maximum_expansion_depth=maximum_expansion_depth,
                             raise_error_on_expansion_not_found=False,
+                            **(model_dump_kwargs or {}),
                         )
                     else:
-                        result_data = result.model_dump_json()
+                        result_data = result.model_dump_json(
+                            **(model_dump_kwargs or {}),
+                        )
 
                     result = make_response(result_data, success_status_code)
 
@@ -183,6 +190,7 @@ def pydantic_api(
             success_status_code=success_status_code,
             request_fields_name=request_fields_name,
             openapi_schema_extra=openapi_schema_extra,
+            model_dump_kwargs=model_dump_kwargs,
         )
 
         return wrapped_endpoint
