@@ -5,7 +5,8 @@ Released TBA
 
 BREAKING CHANGES
 
-- Conversion to Pydantic 2.0.
+- Conversion to Pydantic 2.0.  Pydantic < 2.5 no longer supported.
+- Added `model_dump_kwargs` argument to `@pydantic_api`
 
 
 Version 0.10.0
