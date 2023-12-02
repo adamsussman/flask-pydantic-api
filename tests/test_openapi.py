@@ -36,7 +36,7 @@ def test_basic_schema(basic_app: Flask) -> None:
         result = get_openapi_schema()
 
     result_json = json.dumps(
-        result.model_dump(by_alias=True, exclude_none=True),
+        result,
         indent=4,
         sort_keys=True,
     )
@@ -76,7 +76,6 @@ def test_basic_schema(basic_app: Flask) -> None:
             "paths": {
                 "/": {
                     "get": {
-                        "deprecated": false,
                         "parameters": [],
                         "responses": {
                             "200": {
@@ -115,7 +114,7 @@ def test_add_error_response(basic_app: Flask) -> None:
         result = add_response_schema(result, "400", SpecialError)
 
     result_json = json.dumps(
-        result.model_dump(by_alias=True, exclude_none=True),
+        result,
         indent=4,
         sort_keys=True,
     )
@@ -172,7 +171,6 @@ def test_add_error_response(basic_app: Flask) -> None:
             "paths": {
                 "/": {
                     "get": {
-                        "deprecated": false,
                         "parameters": [],
                         "responses": {
                             "200": {
@@ -252,7 +250,7 @@ def test_union_response_object(basic_app: Flask) -> None:
         return {"field1": "bar"}
 
     with basic_app.app_context():
-        result = get_openapi_schema().model_dump()
+        result = get_openapi_schema()
 
     assert "ThisResponse" in result["components"]["schemas"]
     assert (
@@ -262,7 +260,7 @@ def test_union_response_object(basic_app: Flask) -> None:
     assert (
         result["paths"]["/api/foo/bar"]["get"]["responses"]["200"]["content"][
             "application/json"
-        ]["media_type_schema"]["ref"]
+        ]["schema"]["$ref"]
         == "#/components/schemas/ThisResponse"
     )
 
@@ -278,7 +276,7 @@ def test_path_args_merge(basic_app: Flask) -> None:
         return body
 
     with basic_app.app_context():
-        result = get_openapi_schema().model_dump()
+        result = get_openapi_schema()
 
     assert "arg1" in [
         param["name"] for param in result["paths"]["/foo/{arg1}"]["get"]["parameters"]
@@ -296,7 +294,7 @@ def test_path_args_keep(basic_app: Flask) -> None:
         return body
 
     with basic_app.app_context():
-        result = get_openapi_schema().model_dump()
+        result = get_openapi_schema()
 
     assert "arg1" in [
         param["name"] for param in result["paths"]["/foo/{arg1}"]["get"]["parameters"]
@@ -320,7 +318,7 @@ def test_fieldsets_added_to_query_string(basic_app: Flask) -> None:
         return ResponseModel(field1="Foo")
 
     with basic_app.app_context():
-        result = get_openapi_schema().model_dump()
+        result = get_openapi_schema()
 
     fields_field = next(
         iter(
@@ -333,9 +331,9 @@ def test_fieldsets_added_to_query_string(basic_app: Flask) -> None:
     )
     assert fields_field
     assert fields_field["name"] == "fields"
-    assert fields_field["param_in"] == "query"
+    assert fields_field["in"] == "query"
     assert fields_field["required"] is False
-    assert fields_field["param_schema"]["type"] == "string"
+    assert fields_field["schema"]["type"] == "string"
 
 
 def test_fieldsets_added_to_request_body(basic_app: Flask) -> None:
@@ -357,7 +355,7 @@ def test_fieldsets_added_to_request_body(basic_app: Flask) -> None:
         return ResponseModel(field1=body.field1)
 
     with basic_app.app_context():
-        result = get_openapi_schema().model_dump()
+        result = get_openapi_schema()
 
     fields_field = result["components"]["schemas"]["Body"]["properties"]["fields"]
     assert fields_field
@@ -378,9 +376,9 @@ def test_extra_schema(basic_app: Flask) -> None:
                 "200": {
                     "content": {
                         "image/*": {
-                            "media_type_schema": {
+                            "schema": {
                                 "type": "string",
-                                "schema_format": "binary",
+                                "format": "binary",
                             }
                         }
                     }
@@ -392,23 +390,23 @@ def test_extra_schema(basic_app: Flask) -> None:
         return Body(field1="foo")
 
     with basic_app.app_context():
-        result = get_openapi_schema().model_dump()
+        result = get_openapi_schema()
 
     assert (
         result["paths"]["/"]["post"]["responses"]["200"]["content"]["application/json"][
-            "media_type_schema"
-        ]["ref"]
+            "schema"
+        ]["$ref"]
         == "#/components/schemas/Body"
     )
     assert (
         result["paths"]["/"]["post"]["responses"]["200"]["content"]["image/*"][
-            "media_type_schema"
+            "schema"
         ]["type"]
         == "string"
     )
     assert (
         result["paths"]["/"]["post"]["responses"]["200"]["content"]["image/*"][
-            "media_type_schema"
-        ]["schema_format"]
+            "schema"
+        ]["format"]
         == "binary"
     )

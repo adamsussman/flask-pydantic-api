@@ -1,12 +1,11 @@
 import re
 from collections import defaultdict
 from functools import partial
-from typing import Any, Callable, Dict, Optional, Type, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
 
 from flask import current_app
-from openapi_pydantic import Info, MediaType, OpenAPI, Response
-from openapi_pydantic.util import PydanticSchema, construct_open_api_with_schema_class
 from pydantic import BaseModel
+from pydantic.json_schema import GenerateJsonSchema
 
 from .api_wrapper import EndpointConfig
 from .utils import get_annotated_models, model_has_uploaded_file_type
@@ -15,13 +14,20 @@ HTTP_METHODS = set(["get", "post", "patch", "delete", "put"])
 
 model_has_fieldsets_defined: Optional[Callable] = None
 try:
-    from pydantic_enhanced_serializer.schema import model_has_fieldsets_defined
+    from pydantic_enhanced_serializer.schema import (
+        FieldsetGenerateJsonSchema,
+        model_has_fieldsets_defined,
+    )
 except ImportError:
-    pass
+    model_has_fieldsets_defined = None
+    FeildsetGenerateJsonSchema = None
 
 
-def get_pydantic_api_path_operations() -> Any:
+def get_pydantic_api_path_operations(
+    schema_generator: type[GenerateJsonSchema] = GenerateJsonSchema,
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     paths: Dict[str, dict] = defaultdict(dict)
+    components: Dict[str, dict] = {}
 
     for rule in current_app.url_map.iter_rules():
         view_func = current_app.view_functions[rule.endpoint]
@@ -70,12 +76,18 @@ def get_pydantic_api_path_operations() -> Any:
                     request_body_add_fields_extra_schema, current_schema_extra
                 )
 
+            schema = request_model.model_json_schema(
+                mode="validation",
+                ref_template="#/components/schemas/{model}",
+                schema_generator=schema_generator,
+            )
+            components.update(schema.pop("$defs", {}))
+            components[title] = schema
+
             request_body = {
                 "description": f"A {title}",
                 "content": {
-                    content_type: {
-                        "schema": PydanticSchema(schema_class=request_model, enum=None)
-                    }
+                    content_type: {"schema": {"$ref": f"#/components/schemas/{title}"}}
                 },
                 "required": True,
             }
@@ -86,13 +98,19 @@ def get_pydantic_api_path_operations() -> Any:
                 or response_models[0].__name__
             )
 
+            schema = response_models[0].model_json_schema(
+                mode="serialization",
+                ref_template="#/components/schemas/{model}",
+                schema_generator=schema_generator,
+            )
+            components.update(schema.pop("$defs", {}))
+            components[title] = schema
+
             responses[success_status_code] = {
                 "description": f"A {title}",
                 "content": {
                     "application/json": {
-                        "schema": PydanticSchema(
-                            schema_class=response_models[0], enum=None
-                        )
+                        "schema": {"$ref": f"#/components/schemas/{title}"}
                     }
                 },
             }
@@ -145,61 +163,100 @@ def get_pydantic_api_path_operations() -> Any:
                 )
 
             paths[path][method] = {
-                "summary": view_func_config.name,
-                "requestBody": request_body,
                 "tags": view_func_config.tags or [],
                 "parameters": parameters,
                 "responses": responses,
             }
+            if request_body:
+                paths[path][method]["requestBody"] = request_body
+
+            if view_func_config.name:
+                paths[path][method]["summary"] = view_func_config.name
 
             if view_func_config.openapi_schema_extra:
                 _deep_update(paths[path][method], view_func_config.openapi_schema_extra)
 
-    return paths
+    return paths, components
 
 
 def add_response_schema(
-    openapi: OpenAPI, status_code: str, schema: Type[BaseModel]
-) -> OpenAPI:
-    if not openapi.paths:
+    openapi: Dict[str, Any],
+    status_code: str,
+    model: Type[BaseModel],
+    schema_generator: type[GenerateJsonSchema] = GenerateJsonSchema,
+) -> Dict[str, Any]:
+    if not openapi.get("paths"):
         return openapi
 
-    title = schema.model_config.get("title") or schema.__name__
+    if "components" not in openapi:
+        openapi["components"] = {}
+    if "schemas" not in openapi["components"]:
+        openapi["components"]["schemas"] = {}
 
-    for path_item in openapi.paths.values():
+    title = model.__name__
+    json_schema = model.model_json_schema(
+        mode="serialization",
+        ref_template="#/components/schemas/{model}",
+        schema_generator=schema_generator,
+    )
+    if "$defs" in json_schema:
+        openapi["components"]["schemas"].update(json_schema.pop("$defs", {}))
+
+    openapi["components"]["schemas"][title] = json_schema
+
+    for path_item in openapi["paths"].values():
         for method in HTTP_METHODS:
-            operation = getattr(path_item, method, None)
+            operation = path_item.get(method, None)
             if not operation:
                 continue
 
-            if status_code not in operation.responses:
-                operation.responses[status_code] = Response(
-                    description=f"A {title}",
-                    content={
-                        "application/json": MediaType(
-                            schema=PydanticSchema(schema_class=schema, enum=None)
-                        )
+            if status_code not in operation.get("responses", {}):
+                if "responses" not in operation:
+                    operation["responses"] = {}
+
+                operation["responses"][status_code] = {
+                    "description": f"A {title}",
+                    "content": {
+                        "application/json": {
+                            "schema": {"$ref": f"#/components/schemas/{title}"}
+                        }
                     },
-                )
+                }
 
-    return construct_open_api_with_schema_class(openapi)
+    return openapi
 
 
-def get_openapi_schema(info: Optional[Info] = None, **kwargs: Any) -> OpenAPI:
-    if not info:
-        info = Info(
-            title="API Documentation",
-            version="0.1",
-        )
-    paths = get_pydantic_api_path_operations()
+def get_openapi_schema(
+    schema_generator: Optional[type[GenerateJsonSchema]] = None, **kwargs
+) -> Dict[str, Any]:
+    if schema_generator is None and FieldsetGenerateJsonSchema is not None:
+        schema_generator = FieldsetGenerateJsonSchema
 
-    return construct_open_api_with_schema_class(
-        OpenAPI(
-            info=info,
-            paths=paths,
-            **kwargs,
-        )
+    paths, components = get_pydantic_api_path_operations(
+        schema_generator=schema_generator
     )
+
+    if "paths" in kwargs:
+        paths.update(kwargs.pop("paths"))
+
+    components = {"schemas": components}
+
+    if "components" in kwargs:
+        components.update(kwargs.pop("components"))
+
+    if "servers" not in kwargs:
+        kwargs["servers"] = [{"url": "/"}]
+
+    return {
+        "openapi": "3.1.0",
+        "info": {
+            "title": "API Documentation",
+            "version": "0.1",
+        },
+        "paths": paths,
+        "components": components,
+        **kwargs,
+    }
 
 
 def request_body_add_fields_extra_schema(

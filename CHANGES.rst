@@ -1,3 +1,11 @@
+Version 1.1.0
+-------------
+
+- Removed openapi-pydantic as a methodology and moved to pure native python data structures
+  (dicts, etc) for OpenAPI.
+- Many reworks and fixes to how openapi schema is generated.
+
+
 Version 1.0.0
 -------------
 
