@@ -1,5 +1,7 @@
-NEXT
-----
+Version 1.2.0
+-------------
+
+Released 2024-06-09
 
 - Add pydantic_api parameter `success_status_code_by_response_model`.  This allows methods that specify a return
   type that is a Union of multiple BaseModels to also specify a specific http status code depending on which
