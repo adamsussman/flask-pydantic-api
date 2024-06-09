@@ -1,3 +1,13 @@
+NEXT
+----
+
+- Add pydantic_api parameter `success_status_code_by_response_model`.  This allows methods that specify a return
+  type that is a Union of multiple BaseModels to also specify a specific http status code depending on which
+  model is in the actual response.
+- OpenAPI schemas will now correctly reflect cases where the response is a Union of multiple pydantic models including
+  custom statuses per model.
+
+
 Version 1.1.0
 -------------
 

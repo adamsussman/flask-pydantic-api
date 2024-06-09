@@ -122,6 +122,7 @@ Note that you may wish to customize your schema results more than this module pr
 * `name`: str - Name for this operation that will be used in the OpenAPI schema
 * `Tags`: List[str] - Tags that will be used for this operation in the OpenAPI schema
 * `success_status_code`: int = 200 - HTTP Status code that will be used on successful response
+* `success_status_code_by_response_model`: Dict[Type[BaseModel], int] = None - If the return type of the method is a Union of multiple BaseModels, this dict can map those models to specific status codes
 * `merge_path_parameters`: bool = False - See [Path Parameter Folding](#patharguments)
 * `request_fields_name`: str = "fields" - If using `pydantic-enhanced-serialzer` this is the name of the request parameter that controls the fieldsets returned. See [Using the Enhanced Serializer](#serializer).
 * `maximum_expansion_depth`: int = 5 - If using `pydantic-enhanced-serialzer` this controls how deep expansions can go. See [Using the Enhanced Serializer](#serializer).

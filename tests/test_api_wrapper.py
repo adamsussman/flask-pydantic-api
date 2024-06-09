@@ -353,3 +353,79 @@ def test_empty_fields_in_signature() -> None:
         "field1": "field1 value",
         "field2": "field2 value",
     }
+
+
+def test_union_response_same_status_code() -> None:
+    class ResponseA(BaseModel):
+        field1: str
+
+    class ResponseB(BaseModel):
+        field2: str
+
+    app = Flask("test_app")
+
+    @app.get("/ret1")
+    @pydantic_api()
+    def do_work() -> Union[ResponseA, ResponseB]:
+        return ResponseA(field1="val1")
+
+    @app.get("/ret2")
+    @pydantic_api()
+    def do_work2() -> Union[ResponseA, ResponseB]:
+        return ResponseB(field2="val2")
+
+    client = app.test_client()
+    response = client.get("/ret1")
+
+    assert response.status_code == 200
+    assert response.json
+
+    assert response.json["field1"] == "val1"
+
+    response = client.get("/ret2")
+
+    assert response.status_code == 200
+    assert response.json
+
+    assert response.json["field2"] == "val2"
+
+
+def test_union_response_different_status_code() -> None:
+    class RequestA(BaseModel):
+        switch: str
+
+    class ResponseA(BaseModel):
+        field1: str
+
+    class ResponseB(BaseModel):
+        field2: str
+
+    app = Flask("test_app")
+
+    @app.get("/")
+    @pydantic_api(
+        success_status_code_by_response_model={
+            ResponseA: 200,
+            ResponseB: 202,
+        }
+    )
+    def do_work(body: RequestA) -> Union[ResponseA, ResponseB]:
+        if body.switch == "A":
+            return ResponseA(field1="val1")
+        else:
+            return ResponseB(field2="val2")
+
+    client = app.test_client()
+    response = client.get("/?switch=A")
+
+    assert response.status_code == 200
+    assert response.json
+
+    assert response.json["field1"] == "val1"
+
+    response = client.get("/?switch=B")
+
+    assert response.status_code == 202
+    assert response.json
+
+    assert response.json["field2"] == "val2"

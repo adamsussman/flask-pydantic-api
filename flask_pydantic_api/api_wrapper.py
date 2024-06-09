@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type, get_origin
 
 from asgiref.sync import async_to_sync
 from flask import abort, current_app, jsonify, make_response, request
-from pydantic import BaseModel, TypeAdapter, ValidationError
+from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 
 from .utils import (
     function_has_fields_in_signature,
@@ -28,8 +28,13 @@ class EndpointConfig(BaseModel):
     tags: Optional[List[str]] = None
     openapi_schema_extra: Optional[Dict[str, Any]] = None
     success_status_code: int
+    success_status_code_by_response_model: Optional[Dict[Type[BaseModel], int]] = None
     request_fields_name: str
     model_dump_kwargs: Optional[Dict[str, Any]] = None
+
+    model_config = ConfigDict(
+        protected_namespaces=(),
+    )
 
 
 def get_request_args(
@@ -87,6 +92,7 @@ def pydantic_api(
     name: Optional[str] = None,
     tags: Optional[List[str]] = None,
     success_status_code: int = 200,
+    success_status_code_by_response_model: Optional[Dict[Type[BaseModel], int]] = None,
     maximum_expansion_depth=5,
     request_fields_name: str = "fields",
     merge_path_parameters: bool = False,
@@ -169,7 +175,13 @@ def pydantic_api(
                             **(model_dump_kwargs or {}),
                         )
 
-                    result = make_response(result_data, success_status_code)
+                    status_code = success_status_code  # default
+                    if success_status_code_by_response_model:
+                        status_code = success_status_code_by_response_model.get(
+                            result.__class__, success_status_code
+                        )
+
+                    result = make_response(result_data, status_code)
 
             except ValidationError as e:
                 raise Exception(
@@ -188,6 +200,7 @@ def pydantic_api(
             name=name,
             tags=tags,
             success_status_code=success_status_code,
+            success_status_code_by_response_model=success_status_code_by_response_model,
             request_fields_name=request_fields_name,
             openapi_schema_extra=openapi_schema_extra,
             model_dump_kwargs=model_dump_kwargs,

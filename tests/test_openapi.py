@@ -410,3 +410,70 @@ def test_extra_schema(basic_app: Flask) -> None:
         ]["format"]
         == "binary"
     )
+
+
+def test_union_response_different_status_code() -> None:
+    class ResponseA(BaseModel):
+        field1: str
+
+    class ResponseB(BaseModel):
+        field2: str
+
+    app = Flask("test_app")
+
+    @app.get("/")
+    @pydantic_api(
+        success_status_code_by_response_model={
+            ResponseA: 200,
+            ResponseB: 202,
+        }
+    )
+    def do_work() -> Union[ResponseA, ResponseB]:
+        return ResponseA(field1="val1")
+
+    with app.app_context():
+        result = get_openapi_schema()
+
+    assert (
+        result["paths"]["/"]["get"]["responses"]["200"]["content"]["application/json"][
+            "schema"
+        ]["$ref"]
+        == "#/components/schemas/ResponseA"
+    )
+
+    assert (
+        result["paths"]["/"]["get"]["responses"]["202"]["content"]["application/json"][
+            "schema"
+        ]["$ref"]
+        == "#/components/schemas/ResponseB"
+    )
+
+    assert "ResponseA" in result["components"]["schemas"]
+    assert "ResponseB" in result["components"]["schemas"]
+
+
+def test_union_response_same_status_code() -> None:
+    class ResponseA(BaseModel):
+        field1: str
+
+    class ResponseB(BaseModel):
+        field2: str
+
+    app = Flask("test_app")
+
+    @app.get("/")
+    @pydantic_api()
+    def do_work() -> Union[ResponseA, ResponseB]:
+        return ResponseA(field1="val1")
+
+    with app.app_context():
+        result = get_openapi_schema()
+
+    assert result["paths"]["/"]["get"]["responses"]["200"]["content"][
+        "application/json"
+    ]["schema"] == {
+        "oneOf": [
+            {"$ref": "#/components/schemas/ResponseA"},
+            {"$ref": "#/components/schemas/ResponseB"},
+        ]
+    }

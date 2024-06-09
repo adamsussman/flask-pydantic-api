@@ -48,6 +48,9 @@ def get_pydantic_api_path_operations(
         responses: Dict[str, dict] = {}
 
         success_status_code = str(view_func_config.success_status_code)
+        success_status_code_by_response_model = (
+            view_func_config.success_status_code_by_response_model
+        )
 
         request_model_param_name, request_model, response_models = get_annotated_models(
             view_func
@@ -68,9 +71,9 @@ def get_pydantic_api_path_operations(
             )
 
             if need_fields_parameter:
-                current_schema_extra: Union[
-                    Callable, dict, None
-                ] = request_model.model_config.get("json_schema_extra", None)
+                current_schema_extra: Union[Callable, dict, None] = (
+                    request_model.model_config.get("json_schema_extra", None)
+                )
 
                 request_model.model_config["json_schema_extra"] = partial(
                     request_body_add_fields_extra_schema, current_schema_extra
@@ -93,27 +96,60 @@ def get_pydantic_api_path_operations(
             }
 
         if response_models:
-            title = (
-                response_models[0].model_config.get("title")
-                or response_models[0].__name__
-            )
+            for response_model in response_models:
+                title = (
+                    response_model.model_config.get("title") or response_model.__name__
+                )
 
-            schema = response_models[0].model_json_schema(
-                mode="serialization",
-                ref_template="#/components/schemas/{model}",
-                schema_generator=schema_generator,
-            )
-            components.update(schema.pop("$defs", {}))
-            components[title] = schema
+                schema = response_model.model_json_schema(
+                    mode="serialization",
+                    ref_template="#/components/schemas/{model}",
+                    schema_generator=schema_generator,
+                )
+                components.update(schema.pop("$defs", {}))
+                components[title] = schema
 
-            responses[success_status_code] = {
-                "description": f"A {title}",
-                "content": {
-                    "application/json": {
-                        "schema": {"$ref": f"#/components/schemas/{title}"}
+                status_code = str(success_status_code)
+                if success_status_code_by_response_model:
+                    status_code = str(
+                        success_status_code_by_response_model.get(
+                            response_model, success_status_code
+                        )
+                    )
+
+                if status_code in responses:
+                    # status already there, need to append
+                    if (
+                        "oneOf"
+                        not in responses[status_code]["content"]["application/json"][
+                            "schema"
+                        ]
+                    ):
+                        responses[status_code]["content"]["application/json"][
+                            "schema"
+                        ] = {
+                            "oneOf": [
+                                responses[status_code]["content"]["application/json"][
+                                    "schema"
+                                ]
+                            ]
+                        }
+
+                    responses[status_code]["content"]["application/json"]["schema"][
+                        "oneOf"
+                    ].append({"$ref": f"#/components/schemas/{title}"})
+                    responses[status_code]["description"] = " or ".join(
+                        [responses[status_code]["description"], title]
+                    )
+                else:
+                    responses[status_code] = {
+                        "description": f"A {title}",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": f"#/components/schemas/{title}"}
+                            }
+                        },
                     }
-                },
-            }
 
         else:
             responses[success_status_code] = {
