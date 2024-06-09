@@ -52,8 +52,8 @@ def get_pydantic_api_path_operations(
             view_func_config.success_status_code_by_response_model
         )
 
-        request_model_param_name, request_model, response_models = get_annotated_models(
-            view_func
+        request_model_param_name, request_models, response_models = (
+            get_annotated_models(view_func)
         )
 
         need_fields_parameter = bool(
@@ -62,38 +62,52 @@ def get_pydantic_api_path_operations(
             and model_has_fieldsets_defined(response_models[0])
         )
 
-        if request_model:
-            title = request_model.model_config.get("title") or request_model.__name__
-            content_type = (
-                "multipart/form-data"
-                if model_has_uploaded_file_type(request_model)
-                else "application/json"
-            )
-
-            if need_fields_parameter:
-                current_schema_extra: Union[Callable, dict, None] = (
-                    request_model.model_config.get("json_schema_extra", None)
+        if request_models:
+            for request_model in request_models:
+                title = (
+                    request_model.model_config.get("title") or request_model.__name__
+                )
+                content_type = (
+                    "multipart/form-data"
+                    if model_has_uploaded_file_type(request_model)
+                    else "application/json"
                 )
 
-                request_model.model_config["json_schema_extra"] = partial(
-                    request_body_add_fields_extra_schema, current_schema_extra
+                if need_fields_parameter:
+                    current_schema_extra: Union[Callable, dict, None] = (
+                        request_model.model_config.get("json_schema_extra", None)
+                    )
+
+                    request_model.model_config["json_schema_extra"] = partial(
+                        request_body_add_fields_extra_schema, current_schema_extra
+                    )
+
+                schema = request_model.model_json_schema(
+                    mode="validation",
+                    ref_template="#/components/schemas/{model}",
+                    schema_generator=schema_generator,
                 )
+                components.update(schema.pop("$defs", {}))
+                components[title] = schema
 
-            schema = request_model.model_json_schema(
-                mode="validation",
-                ref_template="#/components/schemas/{model}",
-                schema_generator=schema_generator,
-            )
-            components.update(schema.pop("$defs", {}))
-            components[title] = schema
+                if request_body:
+                    request_body["description"] = " or ".join(
+                        [request_body["description"], title]
+                    )
+                    request_body["content"][content_type] = {
+                        "schema": {"$ref": f"#/components/schemas/{title}"}
+                    }
 
-            request_body = {
-                "description": f"A {title}",
-                "content": {
-                    content_type: {"schema": {"$ref": f"#/components/schemas/{title}"}}
-                },
-                "required": True,
-            }
+                else:
+                    request_body = {
+                        "description": f"A {title}",
+                        "content": {
+                            content_type: {
+                                "schema": {"$ref": f"#/components/schemas/{title}"}
+                            }
+                        },
+                        "required": True,
+                    }
 
         if response_models:
             for response_model in response_models:

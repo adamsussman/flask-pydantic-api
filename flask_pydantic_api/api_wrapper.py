@@ -39,16 +39,40 @@ class EndpointConfig(BaseModel):
 
 def get_request_args(
     view_kwargs: Dict[str, Any],
-    for_model: Optional[Type[BaseModel]] = None,
+    for_models: Optional[List[Type[BaseModel]]] = None,
     merge_path_parameters: Optional[bool] = False,
     request_model_param_name: Optional[str] = None,
-) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+) -> Tuple[Dict[str, Any], Dict[str, Any], Optional[Type[BaseModel]]]:
     args: Dict[str, Any] = {}
+    request_model: Optional[Type[BaseModel]] = None
 
-    if for_model and model_has_uploaded_file_type(for_model):
-        if not request.content_type.lower().startswith("multipart/form-data"):
+    request_is_multipart = (
+        (request.mimetype or "").lower().startswith("multipart/form-data")
+    )
+
+    if for_models:
+        if (
+            len(for_models) == 1
+            and model_has_uploaded_file_type(for_models[0])
+            and not request_is_multipart
+        ):
             abort(415, "multipart/form-data expected")
 
+        # MUST select a request_model
+        for model in for_models:
+            if model_has_uploaded_file_type(model):
+                if request_is_multipart:
+                    request_model = model
+                    break
+            else:
+                request_model = model
+                break
+
+        if not request_model:
+            abort(415, "Could not match request to a required model")
+
+    # Merge argument/parameter values in from the proper place
+    if request_is_multipart:
         for name, value in chain(request.files.items(), request.form.items()):
             args[name] = value
 
@@ -57,14 +81,14 @@ def get_request_args(
 
     elif request.query_string:
         args.update(request.args.to_dict())
-        if for_model:
+        if request_model:
             args.update(
                 {
                     k: v
                     for k, v in request.args.to_dict(flat=False).items()
-                    if k in for_model.model_fields
-                    and for_model.model_fields[k].annotation
-                    and (origin := get_origin(for_model.model_fields[k].annotation))
+                    if k in request_model.model_fields
+                    and request_model.model_fields[k].annotation
+                    and (origin := get_origin(request_model.model_fields[k].annotation))
                     and isclass(origin)
                     and issubclass(origin, (list, set, frozenset, dict))
                 }
@@ -83,7 +107,7 @@ def get_request_args(
         for argument_name in request.url_rule.arguments:
             view_kwargs.pop(argument_name, None)
 
-    return args, view_kwargs
+    return args, view_kwargs, request_model
 
 
 # decorator that can be composed with regular Flask @blueprint.get/post/etc decorators.
@@ -100,15 +124,15 @@ def pydantic_api(
     model_dump_kwargs: Optional[Dict[str, Any]] = None,
 ) -> Callable:
     def wrap(view_func: Callable) -> Callable:
-        request_model_param_name, request_model, response_models = get_annotated_models(
-            view_func
+        request_model_param_name, request_models, response_models = (
+            get_annotated_models(view_func)
         )
 
         @wraps(view_func)
         def wrapped_endpoint(*args: Any, **kwargs: Any) -> Callable:
-            body, kwargs = (
+            body, kwargs, request_model = (
                 get_request_args(
-                    for_model=request_model,
+                    for_models=request_models,
                     view_kwargs=kwargs,
                     merge_path_parameters=merge_path_parameters,
                     request_model_param_name=request_model_param_name,

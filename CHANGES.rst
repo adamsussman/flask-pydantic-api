@@ -6,6 +6,7 @@ NEXT
   model is in the actual response.
 - OpenAPI schemas will now correctly reflect cases where the response is a Union of multiple pydantic models including
   custom statuses per model.
+- Allow method request body type to be a Union of a model with a file upload and another non-upload model
 
 
 Version 1.1.0

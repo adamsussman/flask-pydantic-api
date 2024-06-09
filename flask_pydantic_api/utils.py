@@ -43,17 +43,31 @@ class UploadedFile(FileStorage):
         return value
 
 
+def is_union_of_model_sublclasses(value: Any) -> bool:
+    if get_origin(value) != Union:
+        return False
+
+    return all([isclass(v) and issubclass(v, BaseModel) for v in get_args(value)])
+
+
 def get_annotated_models(
     func: Callable,
-) -> Tuple[Optional[str], Optional[Type[BaseModel]], Optional[List[Type[BaseModel]]]]:
-    request_model = None
+) -> Tuple[
+    Optional[str], Optional[List[Type[BaseModel]]], Optional[List[Type[BaseModel]]]
+]:
+    request_models = None
     request_model_param_name = None
     response_models = None
 
     view_model_args = [
         k
         for k, v in func.__annotations__.items()
-        if v and k != "return" and isclass(v) and issubclass(v, BaseModel)
+        if v
+        and k != "return"
+        and (
+            (isclass(v) and issubclass(v, BaseModel))
+            or is_union_of_model_sublclasses(v)
+        )
     ]
 
     if len(view_model_args) > 1:
@@ -61,25 +75,33 @@ def get_annotated_models(
             f"Too many model arguments specified for {func.__name__}. "
             "Could not determine which to map to request body"
         )
-    elif len(view_model_args) == 1:
+    elif len(view_model_args) == 1 and (
+        request_annotation := func.__annotations__.get(view_model_args[0])
+    ):
         request_model_param_name = view_model_args[0]
-        request_model = func.__annotations__[request_model_param_name]
+        if get_origin(request_annotation) == Union:
+            request_models = [
+                annotation
+                for annotation in get_args(request_annotation)
+                if isclass(annotation) and issubclass(annotation, BaseModel)
+            ]
+
+        elif isclass(request_annotation) and issubclass(request_annotation, BaseModel):
+            request_models = [request_annotation]
 
     return_annotation = func.__annotations__.get("return")
-    if not return_annotation:
-        return request_model_param_name, request_model, response_models
+    if return_annotation:
+        if get_origin(return_annotation) == Union:
+            response_models = [
+                annotation
+                for annotation in get_args(return_annotation)
+                if isclass(annotation) and issubclass(annotation, BaseModel)
+            ]
 
-    if get_origin(return_annotation) == Union:
-        response_models = [
-            annotation
-            for annotation in get_args(return_annotation)
-            if isclass(annotation) and issubclass(annotation, BaseModel)
-        ]
+        elif isclass(return_annotation) and issubclass(return_annotation, BaseModel):
+            response_models = [return_annotation]
 
-    elif isclass(return_annotation) and issubclass(return_annotation, BaseModel):
-        response_models = [return_annotation]
-
-    return request_model_param_name, request_model, response_models
+    return request_model_param_name, request_models, response_models
 
 
 def function_has_fields_in_signature(func: Callable, request_fields_name: str) -> bool:

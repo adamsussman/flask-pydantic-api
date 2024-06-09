@@ -1,4 +1,5 @@
 import io
+from typing import Union
 
 from flask import Flask
 from pydantic import BaseModel
@@ -163,4 +164,103 @@ def test_multi_file_upload() -> None:
         "file1": file_data1.decode("ascii"),
         "file2": file_data2.decode("ascii"),
         "other_var": "some value",
+    }
+
+
+def test_union_model_and_uploader() -> None:
+    class FileRequest(BaseModel):
+        file1: UploadedFile
+        other_var: str
+
+    class OtherRequest(BaseModel):
+        val1: str
+
+    app = Flask("test_app")
+
+    @app.post("/")
+    @pydantic_api()
+    def do_work(body: Union[FileRequest, OtherRequest]) -> dict:
+        if isinstance(body, FileRequest):
+            return {"body": "FileRequest"}
+
+        if isinstance(body, OtherRequest):
+            return {"body": "OtherRequest"}
+
+        return {"body": "unknown"}
+
+    client = app.test_client()
+
+    response = client.post(
+        "/",
+        content_type="multipart/form-data",
+        data={
+            "file1": FileStorage(
+                stream=io.BytesIO(b"abc123"),
+                filename="whatever",
+            ),
+            "other_var": "foo",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json
+    assert response.json["body"] == "FileRequest"
+
+    response = client.post("/", json={"val1": "foo"})
+    assert response.status_code == 200
+    assert response.json
+    assert response.json["body"] == "OtherRequest"
+
+
+def test_union_model_and_uploader_validation() -> None:
+    class FileRequest(BaseModel):
+        file1: UploadedFile
+        other_var: str
+
+    class OtherRequest(BaseModel):
+        val1: str
+
+    app = Flask("test_app")
+    app.config["FLASK_PYDANTIC_API_RENDER_ERRORS"] = True
+
+    @app.post("/")
+    @pydantic_api()
+    def do_work(body: Union[FileRequest, OtherRequest]) -> dict:
+        if isinstance(body, FileRequest):
+            return {"body": "FileRequest"}
+
+        if isinstance(body, OtherRequest):
+            return {"body": "OtherRequest"}
+
+        return {"body": "unknown"}
+
+    client = app.test_client()
+
+    response = client.post(
+        "/", content_type="multipart/form-data", data={"other_var": "foo"}
+    )
+    assert response.status_code == 400
+    assert response.json
+    assert response.json["errors"][0] == {
+        "input": {
+            "other_var": "foo",
+        },
+        "loc": [
+            "file1",
+        ],
+        "msg": "Field required",
+        "type": "missing",
+        "url": "https://errors.pydantic.dev/2.7/v/missing",
+    }
+
+    response = client.post("/", json={})
+    assert response.status_code == 400
+    assert response.json
+    assert response.json["errors"][0] == {
+        "input": {},
+        "loc": [
+            "val1",
+        ],
+        "msg": "Field required",
+        "type": "missing",
+        "url": "https://errors.pydantic.dev/2.7/v/missing",
     }

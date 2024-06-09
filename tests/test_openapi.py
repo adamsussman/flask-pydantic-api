@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from pydantic_enhanced_serializer import FieldsetConfig
 
 import flask_pydantic_api.apidocs_views
-from flask_pydantic_api import pydantic_api
+from flask_pydantic_api import UploadedFile, pydantic_api
 from flask_pydantic_api.openapi import add_response_schema, get_openapi_schema
 
 
@@ -477,3 +477,42 @@ def test_union_response_same_status_code() -> None:
             {"$ref": "#/components/schemas/ResponseB"},
         ]
     }
+
+
+def test_model_and_uploader_request_body() -> None:
+    class FileRequest(BaseModel):
+        file1: UploadedFile
+        other_var: str
+
+    class OtherRequest(BaseModel):
+        val1: str
+
+    app = Flask("test_app")
+
+    @app.post("/")
+    @pydantic_api()
+    def do_work(body: Union[FileRequest, OtherRequest]) -> dict:
+        return {}
+
+    with app.app_context():
+        result = get_openapi_schema()
+
+    assert result["paths"]["/"]["post"]["requestBody"] == {
+        "content": {
+            "application/json": {
+                "schema": {
+                    "$ref": "#/components/schemas/OtherRequest",
+                }
+            },
+            "multipart/form-data": {
+                "schema": {
+                    "$ref": "#/components/schemas/FileRequest",
+                }
+            },
+        },
+        "description": "A FileRequest or OtherRequest",
+        "required": True,
+    }
+
+    assert "FileRequest" in result["components"]["schemas"]
+    assert "OtherRequest" in result["components"]["schemas"]
