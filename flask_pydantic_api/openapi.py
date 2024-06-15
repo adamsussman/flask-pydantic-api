@@ -20,7 +20,7 @@ try:
     )
 except ImportError:
     model_has_fieldsets_defined = None
-    FeildsetGenerateJsonSchema = None
+    FieldsetGenerateJsonSchema = None
 
 
 def get_pydantic_api_path_operations(
