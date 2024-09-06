@@ -31,6 +31,7 @@ class EndpointConfig(BaseModel):
     success_status_code_by_response_model: Optional[Dict[Type[BaseModel], int]] = None
     request_fields_name: str
     model_dump_kwargs: Optional[Dict[str, Any]] = None
+    get_request_model_from_query_string: Optional[bool] = False
 
     model_config = ConfigDict(
         protected_namespaces=(),
@@ -122,6 +123,7 @@ def pydantic_api(
     merge_path_parameters: bool = False,
     openapi_schema_extra: Optional[Dict[str, Any]] = None,
     model_dump_kwargs: Optional[Dict[str, Any]] = None,
+    get_request_model_from_query_string: Optional[bool] = False,
 ) -> Callable:
     def wrap(view_func: Callable) -> Callable:
         request_model_param_name, request_models, response_models = (
@@ -228,6 +230,7 @@ def pydantic_api(
             request_fields_name=request_fields_name,
             openapi_schema_extra=openapi_schema_extra,
             model_dump_kwargs=model_dump_kwargs,
+            get_request_model_from_query_string=get_request_model_from_query_string,
         )
 
         return wrapped_endpoint

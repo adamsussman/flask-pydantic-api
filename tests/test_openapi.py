@@ -1,6 +1,6 @@
 import json
 from textwrap import dedent
-from typing import ClassVar, Union
+from typing import ClassVar, Optional, Union
 
 import pytest
 from flask import Flask
@@ -516,3 +516,32 @@ def test_model_and_uploader_request_body() -> None:
 
     assert "FileRequest" in result["components"]["schemas"]
     assert "OtherRequest" in result["components"]["schemas"]
+
+
+def test_request_model_exploded_in_query_string() -> None:
+    class Params(BaseModel):
+        var1: str
+        var2: Optional[int] = None
+
+    app = Flask("test_app")
+
+    @app.get("/")
+    @pydantic_api(get_request_model_from_query_string=True)
+    def do_work(body: Params) -> dict:
+        return {}
+
+    with app.app_context():
+        result = get_openapi_schema()
+
+    assert "requestBody" not in result["paths"]["/"]["get"]
+    assert result["paths"]["/"]["get"]["parameters"] == [
+        {
+            "in": "query",
+            "type": "form",
+            "explode": "true",
+            "schema": {
+                "$ref": "#/components/schemas/Params",
+            },
+        }
+    ]
+    assert "Params" in result["components"]["schemas"]

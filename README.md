@@ -128,6 +128,7 @@ Note that you may wish to customize your schema results more than this module pr
 * `maximum_expansion_depth`: int = 5 - If using `pydantic-enhanced-serialzer` this controls how deep expansions can go. See [Using the Enhanced Serializer](#serializer).
 * `openapi_schema_extra`: Optional[Dict[str, Any]] - Optional extra data to add to the openapi schema.  Will be merged with automatically generated schema data at `paths.<path>.<method>`.
 * `model_dump_kwargs`: Optional[Dict[str, Any]] - Optional kwargs will be passed to Pydantic's `model_dump` as arguments when serializing a BaseModel returned by this endpoint.
+* `get_request_model_from_query_string`: Optional[bool] - Affects OpenAPI schema generation.  When true the endpoint will specfify the request model's properties as query string arguments instead of request body arguments.  Defaults to False.
 
 Flask configuration:
 

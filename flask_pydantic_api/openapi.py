@@ -98,6 +98,8 @@ def get_pydantic_api_path_operations(
                         "schema": {"$ref": f"#/components/schemas/{title}"}
                     }
 
+                elif view_func_config.get_request_model_from_query_string:
+                    request_body = {"schema": {"$ref": f"#/components/schemas/{title}"}}
                 else:
                     request_body = {
                         "description": f"A {title}",
@@ -218,7 +220,17 @@ def get_pydantic_api_path_operations(
                 "responses": responses,
             }
             if request_body:
-                paths[path][method]["requestBody"] = request_body
+                if view_func_config.get_request_model_from_query_string:
+                    paths[path][method]["parameters"].append(
+                        {
+                            "in": "query",
+                            "type": "form",
+                            "explode": "true",
+                            **request_body,
+                        }
+                    )
+                else:
+                    paths[path][method]["requestBody"] = request_body
 
             if view_func_config.name:
                 paths[path][method]["summary"] = view_func_config.name
