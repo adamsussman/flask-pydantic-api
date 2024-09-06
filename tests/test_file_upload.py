@@ -240,7 +240,13 @@ def test_union_model_and_uploader_validation() -> None:
     )
     assert response.status_code == 400
     assert response.json
-    assert response.json["errors"][0] == {
+
+    # pytest error urls change by version
+    errors = response.json["errors"]
+    for err in errors:
+        assert "missing" in err.pop("url", "")
+
+    assert errors[0] == {
         "input": {
             "other_var": "foo",
         },
@@ -249,18 +255,22 @@ def test_union_model_and_uploader_validation() -> None:
         ],
         "msg": "Field required",
         "type": "missing",
-        "url": "https://errors.pydantic.dev/2.7/v/missing",
     }
 
     response = client.post("/", json={})
     assert response.status_code == 400
     assert response.json
-    assert response.json["errors"][0] == {
+
+    # pytest error urls change by version
+    errors = response.json["errors"]
+    for err in errors:
+        assert "missing" in err.pop("url", "")
+
+    assert errors[0] == {
         "input": {},
         "loc": [
             "val1",
         ],
         "msg": "Field required",
         "type": "missing",
-        "url": "https://errors.pydantic.dev/2.7/v/missing",
     }
