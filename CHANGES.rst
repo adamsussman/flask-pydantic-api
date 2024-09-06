@@ -1,3 +1,11 @@
+Version 1.3.1
+-------------
+
+Released 2024-09-06
+
+- Fix https://github.com/adamsussman/flask-pydantic-api/issues/2: Correct Content-Type header when not using
+  pydantic_enhanced_serializer
+
 Version 1.3.0
 -------------
 
