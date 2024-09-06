@@ -1,7 +1,7 @@
 Version 1.3.0
 -------------
 
-Released TBA
+Released 2024-09-06
 
 - Add @pydantic_api parameter `get_request_model_from_query_string`.  This instructs the OpenAPI schema generator
   to put the request model's parameters into the query string specification.
