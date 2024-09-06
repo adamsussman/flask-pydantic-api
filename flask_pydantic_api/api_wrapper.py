@@ -197,7 +197,7 @@ def pydantic_api(
                             **(model_dump_kwargs or {}),
                         )
                     else:
-                        result_data = result.model_dump_json(
+                        result_data = result.model_dump(
                             **(model_dump_kwargs or {}),
                         )
 

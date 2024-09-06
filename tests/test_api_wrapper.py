@@ -1,12 +1,18 @@
 from typing import List, Union
 
+import pytest
 from flask import Flask
 from pydantic import BaseModel
+from pytest_mock.plugin import MockerFixture
 
 from flask_pydantic_api import pydantic_api
 
 
-def test_simple_response() -> None:
+@pytest.mark.parametrize("with_enhanced_serializer", [False, True])
+def test_simple_response(mocker: MockerFixture, with_enhanced_serializer: bool) -> None:
+    if not with_enhanced_serializer:
+        mocker.patch("flask_pydantic_api.api_wrapper.render_fieldset_model", None)
+
     class Response(BaseModel):
         field1: str
         field2: str
@@ -25,13 +31,18 @@ def test_simple_response() -> None:
     response = client.get("/")
 
     assert response.status_code == 200, response.json
+    assert "application/json" in response.headers["content-type"]
     assert response.json == {
         "field1": "field1 value",
         "field2": "field2 value",
     }
 
 
-def test_echo_post() -> None:
+@pytest.mark.parametrize("with_enhanced_serializer", [False, True])
+def test_echo_post(mocker: MockerFixture, with_enhanced_serializer: bool) -> None:
+    if not with_enhanced_serializer:
+        mocker.patch("flask_pydantic_api.api_wrapper.render_fieldset_model", None)
+
     class Body(BaseModel):
         field1: str
         field2: str
@@ -52,10 +63,17 @@ def test_echo_post() -> None:
     response = client.post("/", json=body_in)
 
     assert response.status_code == 200, response.json
+    assert "application/json" in response.headers["content-type"]
     assert response.json == body_in
 
 
-def test_echo_query_string() -> None:
+@pytest.mark.parametrize("with_enhanced_serializer", [False, True])
+def test_echo_query_string(
+    mocker: MockerFixture, with_enhanced_serializer: bool
+) -> None:
+    if not with_enhanced_serializer:
+        mocker.patch("flask_pydantic_api.api_wrapper.render_fieldset_model", None)
+
     class Body(BaseModel):
         field1: str
         field2: str
@@ -76,10 +94,17 @@ def test_echo_query_string() -> None:
     response = client.get("/", query_string=body_in)
 
     assert response.status_code == 200, response.json
+    assert "application/json" in response.headers["content-type"]
     assert response.json == body_in
 
 
-def test_echo_query_string_multi() -> None:
+@pytest.mark.parametrize("with_enhanced_serializer", [False, True])
+def test_echo_query_string_multi(
+    mocker: MockerFixture, with_enhanced_serializer: bool
+) -> None:
+    if not with_enhanced_serializer:
+        mocker.patch("flask_pydantic_api.api_wrapper.render_fieldset_model", None)
+
     class Body(BaseModel):
         field1: List[str]
         field2: str
@@ -103,7 +128,13 @@ def test_echo_query_string_multi() -> None:
     assert response.json == body_in
 
 
-def test_validate_fail_post() -> None:
+@pytest.mark.parametrize("with_enhanced_serializer", [False, True])
+def test_validate_fail_post(
+    mocker: MockerFixture, with_enhanced_serializer: bool
+) -> None:
+    if not with_enhanced_serializer:
+        mocker.patch("flask_pydantic_api.api_wrapper.render_fieldset_model", None)
+
     class Body(BaseModel):
         field1: str
         field2: str
@@ -129,6 +160,7 @@ def test_validate_fail_post() -> None:
 
     response = client.post("/", json=body_in)
     assert response.status_code == 400
+    assert "application/json" in response.headers["content-type"]
     assert response.json
 
     assert len(response.json["errors"]) == 1
@@ -157,6 +189,7 @@ def test_body_and_path_vars() -> None:
     response = client.post("/foo/bar", json=body_in)
 
     assert response.status_code == 200
+    assert "application/json" in response.headers["content-type"]
     assert response.json == {"field1": "bar", **body_in}
 
 
@@ -180,6 +213,7 @@ def test_body_and_path_vars_no_merge_args() -> None:
     response = client.post("/foo/bar", json=body_in)
 
     assert response.status_code == 200
+    assert "application/json" in response.headers["content-type"]
     assert response.json == body_in
 
 
@@ -202,6 +236,7 @@ def test_response_is_not_model() -> None:
     response = client.get("/")
 
     assert response.status_code == 200, response.json
+    assert "application/json" in response.headers["content-type"]
     assert response.json == {
         "field1": "field1 value",
         "field2": "field2 value",
@@ -246,6 +281,7 @@ def test_response_non_model(caplog) -> None:
     response = client.get("/")
 
     assert response.status_code == 200
+    assert "application/json" not in response.headers["content-type"]
     assert response.text == "boo"
 
 
@@ -268,6 +304,7 @@ def test_async_view() -> None:
     response = client.get("/")
 
     assert response.status_code == 200, response.json
+    assert "application/json" in response.headers["content-type"]
     assert response.json == {
         "field1": "field1 value",
         "field2": "field2 value",
@@ -295,6 +332,7 @@ def test_fields_in_signature() -> None:
     response = client.get("/?fields=a,b,c.d")
 
     assert response.status_code == 200, response.json
+    assert "application/json" in response.headers["content-type"]
     assert response.json == {
         "field1": "field1 value",
         "field2": "field2 value",
@@ -322,6 +360,7 @@ def test_post_fields_in_signature() -> None:
     response = client.post("/", json={"fields": ["a", "b", "c.d"]})
 
     assert response.status_code == 200, response.json
+    assert "application/json" in response.headers["content-type"]
     assert response.json == {
         "field1": "field1 value",
         "field2": "field2 value",
@@ -349,6 +388,7 @@ def test_empty_fields_in_signature() -> None:
     response = client.get("/")
 
     assert response.status_code == 200, response.json
+    assert "application/json" in response.headers["content-type"]
     assert response.json == {
         "field1": "field1 value",
         "field2": "field2 value",
@@ -378,6 +418,7 @@ def test_union_response_same_status_code() -> None:
     response = client.get("/ret1")
 
     assert response.status_code == 200
+    assert "application/json" in response.headers["content-type"]
     assert response.json
 
     assert response.json["field1"] == "val1"
@@ -385,6 +426,7 @@ def test_union_response_same_status_code() -> None:
     response = client.get("/ret2")
 
     assert response.status_code == 200
+    assert "application/json" in response.headers["content-type"]
     assert response.json
 
     assert response.json["field2"] == "val2"
@@ -419,6 +461,7 @@ def test_union_response_different_status_code() -> None:
     response = client.get("/?switch=A")
 
     assert response.status_code == 200
+    assert "application/json" in response.headers["content-type"]
     assert response.json
 
     assert response.json["field1"] == "val1"
@@ -426,6 +469,7 @@ def test_union_response_different_status_code() -> None:
     response = client.get("/?switch=B")
 
     assert response.status_code == 202
+    assert "application/json" in response.headers["content-type"]
     assert response.json
 
     assert response.json["field2"] == "val2"
