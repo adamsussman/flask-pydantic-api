@@ -1,3 +1,13 @@
+Version 1.4.0
+-------------
+
+Released 2024-12-10
+
+- Fix https://github.com/adamsussman/flask-pydantic-api/issues/4: Correctly handle GET with json Content Type and
+  empy request body.
+- Replace method of getting apidocs template path that accounts for pkg_resources being removed in Python 3.12
+
+
 Version 1.3.1
 -------------
 
