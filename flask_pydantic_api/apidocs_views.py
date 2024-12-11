@@ -1,9 +1,9 @@
 # This is meant mainly as an example.  You probably want to customize the openapi
 # schema object more as well as the doc viewer setup
 
+import os
 from typing import Any, Dict
 
-import pkg_resources
 from flask import Blueprint, render_template_string
 
 from .openapi import get_openapi_schema
@@ -18,7 +18,5 @@ def get_openapi_spec() -> Dict[str, Any]:
 
 @blueprint.get("/")
 def get_apidocs() -> str:
-    viewer_template = pkg_resources.resource_string(
-        "flask_pydantic_api", "templates/rapidoc.html"
-    )
-    return render_template_string(viewer_template.decode("utf8"))
+    viewer_template = os.path.join(os.path.dirname(__file__), "templates/rapidoc.html")
+    return render_template_string(viewer_template)
