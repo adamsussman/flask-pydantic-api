@@ -473,3 +473,29 @@ def test_union_response_different_status_code() -> None:
     assert response.json
 
     assert response.json["field2"] == "val2"
+
+
+def test_get_content_type_no_body() -> None:
+    class Response(BaseModel):
+        field1: str
+        field2: str
+
+    app = Flask("test_app")
+
+    @app.get("/")
+    @pydantic_api()
+    def do_work() -> Response:
+        return Response(
+            field1="field1 value",
+            field2="field2 value",
+        )
+
+    client = app.test_client()
+    response = client.get("/", headers={"Content-Type": "application/json"})
+
+    assert response.status_code == 200, response.json
+    assert "application/json" in response.headers["content-type"]
+    assert response.json == {
+        "field1": "field1 value",
+        "field2": "field2 value",
+    }

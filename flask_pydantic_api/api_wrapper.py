@@ -77,8 +77,8 @@ def get_request_args(
         for name, value in chain(request.files.items(), request.form.items()):
             args[name] = value
 
-    elif request.is_json and request.json:
-        args.update(request.json)
+    elif request.is_json and request.content_length and (body := request.json):
+        args.update(body)
 
     elif request.query_string:
         args.update(request.args.to_dict())
