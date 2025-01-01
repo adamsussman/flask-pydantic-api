@@ -78,6 +78,9 @@ def get_request_args(
             args[name] = value
 
     elif request.is_json and request.content_length and (body := request.json):
+        if not isinstance(body, dict):
+            abort(400, f"JSON request bodies must be a dictionary, not a {type(body)}")
+
         args.update(body)
 
     elif request.query_string:

@@ -499,3 +499,35 @@ def test_get_content_type_no_body() -> None:
         "field1": "field1 value",
         "field2": "field2 value",
     }
+
+
+def test_non_dict_json_body_list() -> None:
+    app = Flask("test_app")
+
+    @app.post("/")
+    @pydantic_api()
+    def do_work() -> str:
+        return "test"
+
+    client = app.test_client()
+    response = client.post("/", json=["a", "b", "c"])
+
+    assert response.status_code == 400, response.json
+    assert "JSON request bodies must be a dictionary, not a" in response.text
+    assert "list" in response.text
+
+
+def test_non_dict_json_body_str() -> None:
+    app = Flask("test_app")
+
+    @app.post("/")
+    @pydantic_api()
+    def do_work() -> str:
+        return "test"
+
+    client = app.test_client()
+    response = client.post("/", json="foo")
+
+    assert response.status_code == 400, response.json
+    assert "JSON request bodies must be a dictionary, not a" in response.text
+    assert "str" in response.text

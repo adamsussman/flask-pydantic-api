@@ -1,3 +1,10 @@
+
+Next
+----
+
+- Added better error handling and response when json body requests are not dictionaries.
+
+
 Version 1.4.0
 -------------
 
