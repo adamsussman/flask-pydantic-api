@@ -1,10 +1,9 @@
-import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from functools import wraps
 from inspect import isclass
 from itertools import chain
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, get_origin
 
-from asgiref.sync import async_to_sync
 from flask import abort, current_app, jsonify, make_response, request
 from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 
@@ -12,10 +11,14 @@ from .utils import (
     function_has_fields_in_signature,
     get_annotated_models,
     model_has_uploaded_file_type,
+    sync_async_wrapper,
 )
 
 augment_schema_with_fieldsets: Optional[Callable] = None
 render_fieldset_model: Optional[Callable] = None
+
+executor = ThreadPoolExecutor(max_workers=4)
+
 
 try:
     from pydantic_enhanced_serializer import render_fieldset_model
@@ -182,23 +185,22 @@ def pydantic_api(
                 kwargs[request_fields_name] = fieldsets
 
             try:
-                if asyncio.iscoroutinefunction(view_func):
-                    result = async_to_sync(view_func)(*args, **kwargs)
-                else:
-                    result = view_func(*args, **kwargs)
+                result = sync_async_wrapper(view_func, *args, **kwargs)
 
                 if response_models and isinstance(result, dict):
                     result = response_models[0](**result)
 
                 if isinstance(result, BaseModel):
                     if render_fieldset_model:
-                        result_data = async_to_sync(render_fieldset_model)(
+                        result_data = sync_async_wrapper(
+                            render_fieldset_model,
                             model=result,
                             fieldsets=fieldsets,
                             maximum_expansion_depth=maximum_expansion_depth,
                             raise_error_on_expansion_not_found=False,
                             **(model_dump_kwargs or {}),
                         )
+
                     else:
                         result_data = result.model_dump(
                             **(model_dump_kwargs or {}),

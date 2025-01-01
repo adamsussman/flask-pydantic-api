@@ -1,3 +1,5 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from inspect import isclass
 from typing import (
     Any,
@@ -11,6 +13,8 @@ from typing import (
     get_origin,
 )
 
+from asgiref.sync import async_to_sync
+from flask import current_app, request
 from pydantic import BaseModel, GetCoreSchemaHandler
 from pydantic.json_schema import GetJsonSchemaHandler, JsonSchemaValue
 from pydantic_core import CoreSchema, PydanticCustomError, core_schema
@@ -114,3 +118,40 @@ def model_has_uploaded_file_type(model: Type[BaseModel]) -> bool:
             return True
 
     return False
+
+
+executor = ThreadPoolExecutor(max_workers=4)
+
+
+def sync_async_wrapper(func: Callable, *args: Any, **kwargs: Any) -> Any:
+    if not asyncio.iscoroutinefunction(func):
+        return func(*args, **kwargs)
+
+    try:
+        return async_to_sync(func)(*args, **kwargs)
+    except RuntimeError:
+        # This means there is already a running event loop.  The only way forward
+        # is to run in a separate thread with a new event_loop.  This is complicated
+        # by the need to replicate Flask app and request context vars in the new thread.
+
+        def sync_runner():
+            app = current_app._get_current_object()
+            req_context = request._get_current_object()
+
+            def run_in_thread():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+
+                    async def run_async_with_context():
+                        with app.app_context():
+                            with app.request_context(req_context.environ):
+                                return await func(*args, **kwargs)
+
+                    return loop.run_until_complete(run_async_with_context())
+                finally:
+                    loop.close()
+
+            return executor.submit(run_in_thread).result()
+
+        return sync_runner()

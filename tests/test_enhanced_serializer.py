@@ -1,8 +1,8 @@
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from flask import Flask
 from pydantic import BaseModel
-from pydantic_enhanced_serializer import FieldsetConfig
+from pydantic_enhanced_serializer import FieldsetConfig, ModelExpansion
 
 from flask_pydantic_api import pydantic_api
 
@@ -71,3 +71,89 @@ def test_validate_honor_fields() -> None:
     assert response.json
 
     assert response.json == {"field2": "value2"}
+
+
+def test_expansion_with_nested_internal_request_and_context() -> None:
+
+    class OuterResponse(BaseModel):
+        field1: str
+        field2: str
+
+        fieldset_config: ClassVar = FieldsetConfig(
+            fieldsets={
+                "default": ["*"],
+                "field3": ModelExpansion(
+                    response_model=dict, expansion_method_name="get_nested_data"
+                ),
+            }
+        )
+
+        def get_nested_data(self, context: Any) -> Any:
+            from flask import current_app
+
+            client = current_app.test_client()
+            response = client.get("/inner")
+            assert response.status_code == 200
+            assert response.json
+            assert response.json == {
+                "inner_field1": "inner1",
+                "inner_field2": "inner2",
+                "inner_field3": "inner3",
+            }
+
+            return response.json
+
+    class InnerResponse(BaseModel):
+        inner_field1: str
+        inner_field2: str
+
+        fieldset_config: ClassVar = FieldsetConfig(
+            fieldsets={
+                "default": ["*"],
+                "inner_field3": ModelExpansion(
+                    expansion_method_name="get_inner_field",
+                ),
+            }
+        )
+
+        def get_inner_field(self, context=Any) -> str:
+            from flask import current_app, request
+
+            assert current_app
+            assert request
+            assert request.path == "/inner"
+
+            return "inner3"
+
+    app = Flask("test_app")
+
+    @app.get("/")
+    @pydantic_api()
+    def do_outer_work() -> OuterResponse:
+        return OuterResponse(
+            field1="value1",
+            field2="value2",
+        )
+
+    @app.get("/inner")
+    @pydantic_api()
+    def do_inner_work() -> InnerResponse:
+        return InnerResponse(
+            inner_field1="inner1",
+            inner_field2="inner2",
+        )
+
+    client = app.test_client()
+    response = client.get("/")
+    assert response.status_code == 200, response.json
+    assert response.json
+
+    assert response.json == {
+        "field1": "value1",
+        "field2": "value2",
+        "field3": {
+            "inner_field1": "inner1",
+            "inner_field2": "inner2",
+            "inner_field3": "inner3",
+        },
+    }

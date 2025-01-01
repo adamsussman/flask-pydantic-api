@@ -2,6 +2,9 @@
 Next
 ----
 
+- Handle more cases of asyncio shenanigans
+- Handle rare case of nested inner api calls with nested expansions that require a different event_loop and require
+  forwarding Flask app and request contexts.
 - Added better error handling and response when json body requests are not dictionaries.
 
 
