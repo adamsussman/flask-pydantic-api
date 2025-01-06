@@ -1,6 +1,8 @@
 
-Next
-----
+1.5.0
+-----
+
+Release 2025-01-05
 
 - Handle more cases of asyncio shenanigans
 - Handle rare case of nested inner api calls with nested expansions that require a different event_loop and require
