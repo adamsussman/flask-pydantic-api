@@ -27,7 +27,6 @@ except ImportError:
 
 
 P = ParamSpec("P")
-T = TypeVar("T")
 DT = TypeVar("DT", bound=Dict[str, Any])
 
 
@@ -136,7 +135,7 @@ def pydantic_api(
     model_dump_kwargs: Optional[Dict[str, Any]] = None,
     get_request_model_from_query_string: Optional[bool] = False,
 ) -> Callable[[Callable[P, Any]], Callable[P, Response]]:
-    def wrap(view_func: Callable[P, T]) -> Callable[P, Response]:
+    def wrap(view_func: Callable[P, Any]) -> Callable[P, Response]:
         request_model_param_name, request_models, response_models = (
             get_annotated_models(view_func)
         )
@@ -217,7 +216,10 @@ def pydantic_api(
                             result.__class__, success_status_code
                         )
 
-                    result = make_response(result_data, status_code)
+                    response = make_response(result_data, status_code)
+
+                else:
+                    response = make_response(result)
 
             except ValidationError as e:
                 raise Exception(
@@ -226,7 +228,7 @@ def pydantic_api(
                     f"error: {str(e)}"
                 )
 
-            return result
+            return response
 
         # Normally wrapping functions with decorators leaves no easy
         # way to tell who is doing the wrapping and for what purpose.
