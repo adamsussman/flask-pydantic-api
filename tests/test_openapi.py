@@ -5,11 +5,16 @@ from typing import ClassVar, Optional, Union
 import pytest
 from flask import Flask
 from pydantic import BaseModel
-from pydantic_enhanced_serializer import FieldsetConfig
 
 import flask_pydantic_api.apidocs_views
 from flask_pydantic_api import UploadedFile, pydantic_api
 from flask_pydantic_api.openapi import add_response_schema, get_openapi_schema
+from tests.utils import require_serializer
+
+try:  # Ensure pytest can parse the file without the import
+    from pydantic_enhanced_serializer import FieldsetConfig
+except ImportError:
+    pass
 
 
 @pytest.fixture
@@ -302,6 +307,7 @@ def test_path_args_keep(basic_app: Flask) -> None:
     assert "arg1" not in result["components"]["schemas"]["Body"]["properties"]
 
 
+@require_serializer
 def test_fieldsets_added_to_query_string(basic_app: Flask) -> None:
     class ResponseModel(BaseModel):
         field1: str
@@ -336,6 +342,7 @@ def test_fieldsets_added_to_query_string(basic_app: Flask) -> None:
     assert fields_field["schema"]["type"] == "string"
 
 
+@require_serializer
 def test_fieldsets_added_to_request_body(basic_app: Flask) -> None:
     class Body(BaseModel):
         field1: str

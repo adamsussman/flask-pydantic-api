@@ -2,9 +2,17 @@ from typing import Any, ClassVar
 
 from flask import Flask
 from pydantic import BaseModel
-from pydantic_enhanced_serializer import FieldsetConfig, ModelExpansion
+
+from tests.utils import require_serializer
+
+try:  # Ensure pytest can parse the file without the import
+    from pydantic_enhanced_serializer import FieldsetConfig, ModelExpansion
+except ImportError:
+    pass
 
 from flask_pydantic_api import pydantic_api
+
+pytestmark = [require_serializer]
 
 
 def test_validate_fieldsets() -> None:

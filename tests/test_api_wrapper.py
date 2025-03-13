@@ -7,6 +7,8 @@ from pytest_mock.plugin import MockerFixture
 
 from flask_pydantic_api import pydantic_api
 
+from tests.utils import has_enhanced_serializer
+
 
 @pytest.mark.parametrize("with_enhanced_serializer", [False, True])
 def test_simple_response(mocker: MockerFixture, with_enhanced_serializer: bool) -> None:
@@ -321,7 +323,7 @@ def test_fields_in_signature() -> None:
     @app.get("/")
     @pydantic_api()
     def do_work(fields: List[str]) -> Response:
-        assert fields == ["a", "b", "c.d"]
+        assert fields == (["a", "b", "c.d"] if has_enhanced_serializer else [])
 
         return Response(
             field1="field1 value",
@@ -349,7 +351,7 @@ def test_post_fields_in_signature() -> None:
     @app.post("/")
     @pydantic_api()
     def do_work(fields: List[str]) -> Response:
-        assert fields == ["a", "b", "c.d"]
+        assert fields == (["a", "b", "c.d"] if has_enhanced_serializer else [])
 
         return Response(
             field1="field1 value",
