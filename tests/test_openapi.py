@@ -579,6 +579,8 @@ def test_union_request_same_content_type() -> None:
             {"$ref": "#/components/schemas/RequestB"},
         ]
     }
+    
+    assert result["paths"]["/"]["get"]["requestBody"]["description"] == "A RequestA or RequestB"
 
     assert "RequestA" in result["components"]["schemas"]
     assert "RequestB" in result["components"]["schemas"]
@@ -610,6 +612,8 @@ def test_union_request_different_content_type() -> None:
     assert result["paths"]["/"]["get"]["requestBody"]["content"]["multipart/form-data"][
         "schema"
     ] == {"$ref": "#/components/schemas/MultipartFormDataRequest"}
+
+    assert result["paths"]["/"]["get"]["requestBody"]["description"] == "A ApplicationJsonRequest or MultipartFormDataRequest"
 
     assert "ApplicationJsonRequest" in result["components"]["schemas"]
     assert "MultipartFormDataRequest" in result["components"]["schemas"]
@@ -667,6 +671,8 @@ def test_union_request_multiple_mixed_content_types() -> None:
             {"$ref": "#/components/schemas/MultipartFormDataRequestB"},
         ]
     }
+
+    assert result["paths"]["/"]["get"]["requestBody"]["description"] == "A ApplicationJsonRequestA or MultipartFormDataRequestA or ApplicationJsonRequestB or MultipartFormDataRequestB"
 
     assert "ApplicationJsonRequestA" in result["components"]["schemas"]
     assert "ApplicationJsonRequestB" in result["components"]["schemas"]
