@@ -19,4 +19,5 @@ def get_openapi_spec() -> Dict[str, Any]:
 @blueprint.get("/")
 def get_apidocs() -> str:
     viewer_template = os.path.join(os.path.dirname(__file__), "templates/rapidoc.html")
-    return render_template_string(viewer_template)
+    with open(viewer_template) as fh:
+        return render_template_string(fh.read())
