@@ -1,7 +1,7 @@
 1.6.0
 -----
 
-Released TBD
+Released 2024-04-24 
 
 - Minimum supported python version is now 3.10
 - Fix issues rendering sample rapidoc template
