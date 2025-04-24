@@ -13,18 +13,21 @@ from .utils import get_annotated_models, model_has_uploaded_file_type
 HTTP_METHODS = set(["get", "post", "patch", "delete", "put"])
 
 model_has_fieldsets_defined: Optional[Callable] = None
+DEFAULT_SCHEMA_GENERATOR: type[GenerateJsonSchema] = GenerateJsonSchema
+
 try:
     from pydantic_enhanced_serializer.schema import (
         FieldsetGenerateJsonSchema,
         model_has_fieldsets_defined,
     )
+    DEFAULT_SCHEMA_GENERATOR = FieldsetGenerateJsonSchema
 except ImportError:
     FieldsetGenerateJsonSchema = None
     model_has_fieldsets_defined = None
 
 
 def get_pydantic_api_path_operations(
-    schema_generator: type[GenerateJsonSchema] = GenerateJsonSchema,
+    schema_generator: type[GenerateJsonSchema] = DEFAULT_SCHEMA_GENERATOR,
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     paths: Dict[str, dict] = defaultdict(dict)
     components: Dict[str, dict] = {}
@@ -245,7 +248,7 @@ def add_response_schema(
     openapi: Dict[str, Any],
     status_code: str,
     model: Type[BaseModel],
-    schema_generator: type[GenerateJsonSchema] = GenerateJsonSchema,
+    schema_generator: type[GenerateJsonSchema] = DEFAULT_SCHEMA_GENERATOR,
 ) -> Dict[str, Any]:
     if not openapi.get("paths"):
         return openapi
@@ -289,11 +292,8 @@ def add_response_schema(
 
 
 def get_openapi_schema(
-    schema_generator: Optional[type[GenerateJsonSchema]] = None, **kwargs
+    schema_generator: type[GenerateJsonSchema] = DEFAULT_SCHEMA_GENERATOR, **kwargs
 ) -> Dict[str, Any]:
-    if schema_generator is None and FieldsetGenerateJsonSchema is not None:
-        schema_generator = FieldsetGenerateJsonSchema
-
     paths, components = get_pydantic_api_path_operations(
         schema_generator=schema_generator
     )
