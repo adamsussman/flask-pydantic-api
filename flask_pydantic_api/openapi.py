@@ -19,6 +19,7 @@ try:
         model_has_fieldsets_defined,
     )
 except ImportError:
+    FieldsetGenerateJsonSchema = None
     model_has_fieldsets_defined = None
 
 
