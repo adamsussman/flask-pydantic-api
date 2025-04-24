@@ -6,7 +6,6 @@ from pydantic import BaseModel
 from pytest_mock.plugin import MockerFixture
 
 from flask_pydantic_api import pydantic_api
-
 from tests.utils import has_enhanced_serializer
 
 

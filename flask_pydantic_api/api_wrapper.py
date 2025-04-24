@@ -2,7 +2,19 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import wraps
 from inspect import isclass
 from itertools import chain
-from typing import Any, Awaitable, Callable, Dict, List, Optional, ParamSpec, Tuple, Type, TypeVar, get_origin
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    ParamSpec,
+    Tuple,
+    Type,
+    TypeVar,
+    get_origin,
+)
 
 from flask import Response, abort, current_app, jsonify, make_response, request
 from flask.typing import ResponseReturnValue
@@ -122,7 +134,9 @@ def get_request_args(
     return args, view_kwargs, request_model
 
 
-EndpointReturnValue = ResponseReturnValue | BaseModel | Awaitable[ResponseReturnValue | BaseModel]
+EndpointReturnValue = (
+    ResponseReturnValue | BaseModel | Awaitable[ResponseReturnValue | BaseModel]
+)
 
 
 # decorator that can be composed with regular Flask @blueprint.get/post/etc decorators.
@@ -138,8 +152,13 @@ def pydantic_api(
     openapi_schema_extra: Optional[Dict[str, Any]] = None,
     model_dump_kwargs: Optional[Dict[str, Any]] = None,
     get_request_model_from_query_string: Optional[bool] = False,
-) -> Callable[[Callable[P, EndpointReturnValue | Awaitable[EndpointReturnValue]]], Callable[P, Response]]:
-    def wrap(view_func: Callable[P, EndpointReturnValue | Awaitable[EndpointReturnValue]]) -> Callable[P, Response]:
+) -> Callable[
+    [Callable[P, EndpointReturnValue | Awaitable[EndpointReturnValue]]],
+    Callable[P, Response],
+]:
+    def wrap(
+        view_func: Callable[P, EndpointReturnValue | Awaitable[EndpointReturnValue]],
+    ) -> Callable[P, Response]:
         request_model_param_name, request_models, response_models = (
             get_annotated_models(view_func)
         )

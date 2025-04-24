@@ -130,7 +130,9 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 
-def sync_async_wrapper(func: Callable[P, T | Awaitable[T]], *args: P.args, **kwargs: P.kwargs) -> T:
+def sync_async_wrapper(
+    func: Callable[P, T | Awaitable[T]], *args: P.args, **kwargs: P.kwargs
+) -> T:
     if not asyncio.iscoroutinefunction(func):
         return cast(T, func(*args, **kwargs))
 
@@ -142,8 +144,8 @@ def sync_async_wrapper(func: Callable[P, T | Awaitable[T]], *args: P.args, **kwa
         # by the need to replicate Flask app and request context vars in the new thread.
 
         def sync_runner():
-            app = current_app._get_current_object() # type: ignore
-            req_context = request._get_current_object() # type: ignore
+            app = current_app._get_current_object()  # type: ignore
+            req_context = request._get_current_object()  # type: ignore
 
             def run_in_thread():
                 loop = asyncio.new_event_loop()

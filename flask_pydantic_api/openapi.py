@@ -20,6 +20,7 @@ try:
         FieldsetGenerateJsonSchema,
         model_has_fieldsets_defined,
     )
+
     DEFAULT_SCHEMA_GENERATOR = FieldsetGenerateJsonSchema
 except ImportError:
     FieldsetGenerateJsonSchema = None
