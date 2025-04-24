@@ -22,7 +22,8 @@ try:
     )
     DEFAULT_SCHEMA_GENERATOR = FieldsetGenerateJsonSchema
 except ImportError:
-    pass
+    FieldsetGenerateJsonSchema = None
+    model_has_fieldsets_defined = None
 
 
 def get_pydantic_api_path_operations(

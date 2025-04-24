@@ -2,9 +2,10 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import wraps
 from inspect import isclass
 from itertools import chain
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, get_origin
+from typing import Any, Awaitable, Callable, Dict, List, Optional, ParamSpec, Tuple, Type, TypeVar, get_origin
 
-from flask import abort, current_app, jsonify, make_response, request
+from flask import Response, abort, current_app, jsonify, make_response, request
+from flask.typing import ResponseReturnValue
 from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 
 from .utils import (
@@ -26,6 +27,10 @@ except ImportError:
     pass
 
 
+P = ParamSpec("P")
+DT = TypeVar("DT", bound=Dict[str, Any])
+
+
 class EndpointConfig(BaseModel):
     name: Optional[str] = None
     tags: Optional[List[str]] = None
@@ -42,11 +47,11 @@ class EndpointConfig(BaseModel):
 
 
 def get_request_args(
-    view_kwargs: Dict[str, Any],
+    view_kwargs: DT,
     for_models: Optional[List[Type[BaseModel]]] = None,
     merge_path_parameters: Optional[bool] = False,
     request_model_param_name: Optional[str] = None,
-) -> Tuple[Dict[str, Any], Dict[str, Any], Optional[Type[BaseModel]]]:
+) -> Tuple[Dict[str, Any], DT, Optional[Type[BaseModel]]]:
     args: Dict[str, Any] = {}
     request_model: Optional[Type[BaseModel]] = None
 
@@ -117,6 +122,9 @@ def get_request_args(
     return args, view_kwargs, request_model
 
 
+EndpointReturnValue = ResponseReturnValue | BaseModel | Awaitable[ResponseReturnValue | BaseModel]
+
+
 # decorator that can be composed with regular Flask @blueprint.get/post/etc decorators.
 # This decorator uses type signatures to figure out the request and response pydantic models.
 def pydantic_api(
@@ -130,14 +138,14 @@ def pydantic_api(
     openapi_schema_extra: Optional[Dict[str, Any]] = None,
     model_dump_kwargs: Optional[Dict[str, Any]] = None,
     get_request_model_from_query_string: Optional[bool] = False,
-) -> Callable:
-    def wrap(view_func: Callable) -> Callable:
+) -> Callable[[Callable[P, EndpointReturnValue | Awaitable[EndpointReturnValue]]], Callable[P, Response]]:
+    def wrap(view_func: Callable[P, EndpointReturnValue | Awaitable[EndpointReturnValue]]) -> Callable[P, Response]:
         request_model_param_name, request_models, response_models = (
             get_annotated_models(view_func)
         )
 
         @wraps(view_func)
-        def wrapped_endpoint(*args: Any, **kwargs: Any) -> Callable:
+        def wrapped_endpoint(*args: P.args, **kwargs: P.kwargs) -> Response:
             body, kwargs, request_model = (
                 get_request_args(
                     for_models=request_models,
@@ -212,7 +220,10 @@ def pydantic_api(
                             result.__class__, success_status_code
                         )
 
-                    result = make_response(result_data, status_code)
+                    response = make_response(result_data, status_code)
+
+                else:
+                    response = make_response(result)
 
             except ValidationError as e:
                 raise Exception(
@@ -221,7 +232,7 @@ def pydantic_api(
                     f"error: {str(e)}"
                 )
 
-            return result
+            return response
 
         # Normally wrapping functions with decorators leaves no easy
         # way to tell who is doing the wrapping and for what purpose.
