@@ -1,3 +1,17 @@
+1.6.0
+-----
+
+Released TBD
+
+- Minimum supported python version is now 3.10
+- Fix issues rendering sample rapidoc template
+- Fix optional enhanced serializer import handling, especially when not installed.  @mikep-wmt
+  https://github.com/adamsussman/flask-pydantic-api/pull/9
+- fix(serializer): fix multiple errors ocurring without the serializer extra. @noirbizarre
+  https://github.com/adamsussman/flask-pydantic-api/pull/8
+- Change return-type of annotated endpoint to Response @logi
+  https://github.com/adamsussman/flask-pydantic-api/pull/6
+
 
 1.5.0
 -----
