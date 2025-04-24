@@ -3,12 +3,16 @@ from concurrent.futures import ThreadPoolExecutor
 from inspect import isclass
 from typing import (
     Any,
+    Awaitable,
     Callable,
     List,
     Optional,
+    ParamSpec,
     Tuple,
     Type,
+    TypeVar,
     Union,
+    cast,
     get_args,
     get_origin,
 )
@@ -122,21 +126,24 @@ def model_has_uploaded_file_type(model: Type[BaseModel]) -> bool:
 
 executor = ThreadPoolExecutor(max_workers=4)
 
+P = ParamSpec("P")
+T = TypeVar("T")
 
-def sync_async_wrapper(func: Callable, *args: Any, **kwargs: Any) -> Any:
+
+def sync_async_wrapper(func: Callable[P, T | Awaitable[T]], *args: P.args, **kwargs: P.kwargs) -> T:
     if not asyncio.iscoroutinefunction(func):
-        return func(*args, **kwargs)
+        return cast(T, func(*args, **kwargs))
 
     try:
-        return async_to_sync(func)(*args, **kwargs)
+        return cast(T, async_to_sync(func)(*args, **kwargs))
     except RuntimeError:
         # This means there is already a running event loop.  The only way forward
         # is to run in a separate thread with a new event_loop.  This is complicated
         # by the need to replicate Flask app and request context vars in the new thread.
 
         def sync_runner():
-            app = current_app._get_current_object()
-            req_context = request._get_current_object()
+            app = current_app._get_current_object() # type: ignore
+            req_context = request._get_current_object() # type: ignore
 
             def run_in_thread():
                 loop = asyncio.new_event_loop()
@@ -146,7 +153,7 @@ def sync_async_wrapper(func: Callable, *args: Any, **kwargs: Any) -> Any:
                     async def run_async_with_context():
                         with app.app_context():
                             with app.request_context(req_context.environ):
-                                return await func(*args, **kwargs)
+                                return cast(T, await func(*args, **kwargs))
 
                     return loop.run_until_complete(run_async_with_context())
                 finally:
