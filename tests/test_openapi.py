@@ -553,6 +553,7 @@ def test_request_model_exploded_in_query_string() -> None:
     ]
     assert "Params" in result["components"]["schemas"]
 
+
 def test_union_request_same_content_type() -> None:
     class RequestA(BaseModel):
         field1: str
@@ -561,23 +562,23 @@ def test_union_request_same_content_type() -> None:
         field2: str
 
     app = Flask(import_name="test_app")
-    
-    @app.get(rule='/')
+
+    @app.get(rule="/")
     @pydantic_api()
     def do_work(request: Union[RequestA, RequestB]) -> Union[RequestA, RequestB]:
         return request
-    
+
     with app.app_context():
         result = get_openapi_schema()
-    
-    assert (
-        result["paths"]["/"]["get"]["requestBody"]["content"]["application/json"]["schema"] == {
-            "oneOf": [
-                {"$ref": "#/components/schemas/RequestA"},
-                {"$ref": "#/components/schemas/RequestB"}
-            ]
-        }
-    )
-        
+
+    assert result["paths"]["/"]["get"]["requestBody"]["content"]["application/json"][
+        "schema"
+    ] == {
+        "oneOf": [
+            {"$ref": "#/components/schemas/RequestA"},
+            {"$ref": "#/components/schemas/RequestB"},
+        ]
+    }
+
     assert "RequestA" in result["components"]["schemas"]
     assert "RequestB" in result["components"]["schemas"]
