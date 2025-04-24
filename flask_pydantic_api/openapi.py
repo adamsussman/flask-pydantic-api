@@ -16,15 +16,16 @@ model_has_fieldsets_defined: Optional[Callable] = None
 DEFAULT_SCHEMA_GENERATOR: type[GenerateJsonSchema] = GenerateJsonSchema
 
 try:
-    from pydantic_enhanced_serializer.schema import (
-        FieldsetGenerateJsonSchema,
-        model_has_fieldsets_defined,
-    )
+    import pydantic_enhanced_serializer.schema
 
-    DEFAULT_SCHEMA_GENERATOR = FieldsetGenerateJsonSchema
+    DEFAULT_SCHEMA_GENERATOR = (
+        pydantic_enhanced_serializer.schema.FieldsetGenerateJsonSchema
+    )
+    model_has_fieldsets_defined = (
+        pydantic_enhanced_serializer.schema.model_has_fieldsets_defined
+    )
 except ImportError:
-    FieldsetGenerateJsonSchema = None
-    model_has_fieldsets_defined = None
+    pass
 
 
 def get_pydantic_api_path_operations(
