@@ -582,3 +582,93 @@ def test_union_request_same_content_type() -> None:
 
     assert "RequestA" in result["components"]["schemas"]
     assert "RequestB" in result["components"]["schemas"]
+
+
+def test_union_request_different_content_type() -> None:
+    class ApplicationJsonRequest(BaseModel):
+        field1: str
+
+    class MultipartFormDataRequest(BaseModel):
+        field2: UploadedFile
+
+    app = Flask(import_name="test_app")
+
+    @app.get(rule="/")
+    @pydantic_api()
+    def do_work(
+        request: Union[ApplicationJsonRequest, MultipartFormDataRequest]
+    ) -> Union[ApplicationJsonRequest, MultipartFormDataRequest]:
+        return request
+
+    with app.app_context():
+        result = get_openapi_schema()
+
+    assert result["paths"]["/"]["get"]["requestBody"]["content"]["application/json"][
+        "schema"
+    ] == {"$ref": "#/components/schemas/ApplicationJsonRequest"}
+
+    assert result["paths"]["/"]["get"]["requestBody"]["content"]["multipart/form-data"][
+        "schema"
+    ] == {"$ref": "#/components/schemas/MultipartFormDataRequest"}
+
+    assert "ApplicationJsonRequest" in result["components"]["schemas"]
+    assert "MultipartFormDataRequest" in result["components"]["schemas"]
+
+
+def test_union_request_multiple_mixed_content_types() -> None:
+    class ApplicationJsonRequestA(BaseModel):
+        field1: str
+
+    class ApplicationJsonRequestB(BaseModel):
+        field2: str
+
+    class MultipartFormDataRequestA(BaseModel):
+        field3: UploadedFile
+
+    class MultipartFormDataRequestB(BaseModel):
+        field3: UploadedFile
+
+    app = Flask(import_name="test_app")
+
+    @app.get(rule="/")
+    @pydantic_api()
+    def do_work(
+        request: Union[
+            ApplicationJsonRequestA,
+            MultipartFormDataRequestA,
+            ApplicationJsonRequestB,
+            MultipartFormDataRequestB,
+        ]
+    ) -> Union[
+        ApplicationJsonRequestA,
+        MultipartFormDataRequestA,
+        ApplicationJsonRequestB,
+        MultipartFormDataRequestB,
+    ]:
+        return request
+
+    with app.app_context():
+        result = get_openapi_schema()
+
+    assert result["paths"]["/"]["get"]["requestBody"]["content"]["application/json"][
+        "schema"
+    ] == {
+        "oneOf": [
+            {"$ref": "#/components/schemas/ApplicationJsonRequestA"},
+            {"$ref": "#/components/schemas/ApplicationJsonRequestB"},
+        ]
+    }
+
+    assert result["paths"]["/"]["get"]["requestBody"]["content"]["multipart/form-data"][
+        "schema"
+    ] == {
+        "oneOf": [
+            {"$ref": "#/components/schemas/MultipartFormDataRequestA"},
+            {"$ref": "#/components/schemas/MultipartFormDataRequestB"},
+        ]
+    }
+
+    assert "ApplicationJsonRequestA" in result["components"]["schemas"]
+    assert "ApplicationJsonRequestB" in result["components"]["schemas"]
+    assert "MultipartFormDataRequestA" in result["components"]["schemas"]
+    assert "MultipartFormDataRequestB" in result["components"]["schemas"]
