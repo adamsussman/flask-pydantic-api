@@ -99,9 +99,26 @@ def get_pydantic_api_path_operations(
                     request_body["description"] = " or ".join(
                         [request_body["description"], title]
                     )
-                    request_body["content"][content_type] = {
-                        "schema": {"$ref": f"#/components/schemas/{title}"}
-                    }
+
+                    if content_type in request_body["content"]:
+                        # There's a request body for this content type, add this to the union
+                        if (
+                            "oneOf"
+                            not in request_body["content"][content_type]["schema"]
+                        ):
+                            request_body["content"][content_type]["schema"] = {
+                                "oneOf": [
+                                    request_body["content"][content_type]["schema"]
+                                ]
+                            }
+
+                        request_body["content"][content_type]["schema"]["oneOf"].append(
+                            {"$ref": f"#/components/schemas/{title}"}
+                        )
+                    else:
+                        request_body["content"][content_type] = {
+                            "schema": {"$ref": f"#/components/schemas/{title}"}
+                        }
 
                 elif view_func_config.get_request_model_from_query_string:
                     request_body = {"schema": {"$ref": f"#/components/schemas/{title}"}}
