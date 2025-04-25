@@ -579,8 +579,11 @@ def test_union_request_same_content_type() -> None:
             {"$ref": "#/components/schemas/RequestB"},
         ]
     }
-    
-    assert result["paths"]["/"]["get"]["requestBody"]["description"] == "A RequestA or RequestB"
+
+    assert (
+        result["paths"]["/"]["get"]["requestBody"]["description"]
+        == "A RequestA or RequestB"
+    )
 
     assert "RequestA" in result["components"]["schemas"]
     assert "RequestB" in result["components"]["schemas"]
@@ -613,7 +616,10 @@ def test_union_request_different_content_type() -> None:
         "schema"
     ] == {"$ref": "#/components/schemas/MultipartFormDataRequest"}
 
-    assert result["paths"]["/"]["get"]["requestBody"]["description"] == "A ApplicationJsonRequest or MultipartFormDataRequest"
+    assert (
+        result["paths"]["/"]["get"]["requestBody"]["description"]
+        == "A ApplicationJsonRequest or MultipartFormDataRequest"
+    )
 
     assert "ApplicationJsonRequest" in result["components"]["schemas"]
     assert "MultipartFormDataRequest" in result["components"]["schemas"]
@@ -626,10 +632,16 @@ def test_union_request_multiple_mixed_content_types() -> None:
     class ApplicationJsonRequestB(BaseModel):
         field2: str
 
+    class ApplicationJsonRequestC(BaseModel):
+        field3: str
+
     class MultipartFormDataRequestA(BaseModel):
-        field3: UploadedFile
+        field1: UploadedFile
 
     class MultipartFormDataRequestB(BaseModel):
+        field2: UploadedFile
+
+    class MultipartFormDataRequestC(BaseModel):
         field3: UploadedFile
 
     app = Flask(import_name="test_app")
@@ -642,12 +654,16 @@ def test_union_request_multiple_mixed_content_types() -> None:
             MultipartFormDataRequestA,
             ApplicationJsonRequestB,
             MultipartFormDataRequestB,
+            ApplicationJsonRequestC,
+            MultipartFormDataRequestC,
         ]
     ) -> Union[
         ApplicationJsonRequestA,
         MultipartFormDataRequestA,
         ApplicationJsonRequestB,
         MultipartFormDataRequestB,
+        ApplicationJsonRequestC,
+        MultipartFormDataRequestC,
     ]:
         return request
 
@@ -660,6 +676,7 @@ def test_union_request_multiple_mixed_content_types() -> None:
         "oneOf": [
             {"$ref": "#/components/schemas/ApplicationJsonRequestA"},
             {"$ref": "#/components/schemas/ApplicationJsonRequestB"},
+            {"$ref": "#/components/schemas/ApplicationJsonRequestC"},
         ]
     }
 
@@ -669,12 +686,18 @@ def test_union_request_multiple_mixed_content_types() -> None:
         "oneOf": [
             {"$ref": "#/components/schemas/MultipartFormDataRequestA"},
             {"$ref": "#/components/schemas/MultipartFormDataRequestB"},
+            {"$ref": "#/components/schemas/MultipartFormDataRequestC"},
         ]
     }
 
-    assert result["paths"]["/"]["get"]["requestBody"]["description"] == "A ApplicationJsonRequestA or MultipartFormDataRequestA or ApplicationJsonRequestB or MultipartFormDataRequestB"
+    assert (
+        result["paths"]["/"]["get"]["requestBody"]["description"]
+        == "A ApplicationJsonRequestA or MultipartFormDataRequestA or ApplicationJsonRequestB or MultipartFormDataRequestB or ApplicationJsonRequestC or MultipartFormDataRequestC"
+    )
 
     assert "ApplicationJsonRequestA" in result["components"]["schemas"]
     assert "ApplicationJsonRequestB" in result["components"]["schemas"]
+    assert "ApplicationJsonRequestC" in result["components"]["schemas"]
     assert "MultipartFormDataRequestA" in result["components"]["schemas"]
     assert "MultipartFormDataRequestB" in result["components"]["schemas"]
+    assert "MultipartFormDataRequestC" in result["components"]["schemas"]
