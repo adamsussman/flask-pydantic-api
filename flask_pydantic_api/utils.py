@@ -1,6 +1,7 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from inspect import isclass
+from types import UnionType
 from typing import (
     Any,
     Awaitable,
@@ -51,8 +52,15 @@ class UploadedFile(FileStorage):
         return value
 
 
+_UNION_TYPES = {Union, UnionType}
+
+
+def is_union(value: Any) -> bool:
+    return get_origin(value) in _UNION_TYPES
+
+
 def is_union_of_model_sublclasses(value: Any) -> bool:
-    if get_origin(value) != Union:
+    if not is_union(value):
         return False
 
     return all([isclass(v) and issubclass(v, BaseModel) for v in get_args(value)])
@@ -87,7 +95,7 @@ def get_annotated_models(
         request_annotation := func.__annotations__.get(view_model_args[0])
     ):
         request_model_param_name = view_model_args[0]
-        if get_origin(request_annotation) == Union:
+        if is_union(request_annotation):
             request_models = [
                 annotation
                 for annotation in get_args(request_annotation)
@@ -99,7 +107,7 @@ def get_annotated_models(
 
     return_annotation = func.__annotations__.get("return")
     if return_annotation:
-        if get_origin(return_annotation) == Union:
+        if is_union(return_annotation):
             response_models = [
                 annotation
                 for annotation in get_args(return_annotation)
