@@ -268,7 +268,8 @@ def test_union_response_object(basic_app: Flask) -> None:
         ]["schema"]["$ref"]
         == "#/components/schemas/ThisResponse"
     )
-    
+
+
 def test_union_type_response_object(basic_app: Flask) -> None:
     class ThisResponse(BaseModel):
         this_field1: str
@@ -292,7 +293,6 @@ def test_union_type_response_object(basic_app: Flask) -> None:
         ]["schema"]["$ref"]
         == "#/components/schemas/ThisResponse"
     )
-
 
 
 def test_path_args_merge(basic_app: Flask) -> None:
@@ -614,6 +614,7 @@ def test_model_and_uploader_request_body_with_union_type() -> None:
 
     assert "FileRequest" in result["components"]["schemas"]
     assert "OtherRequest" in result["components"]["schemas"]
+
 
 def test_request_model_exploded_in_query_string() -> None:
     class Params(BaseModel):
