@@ -270,6 +270,31 @@ def test_union_response_object(basic_app: Flask) -> None:
     )
 
 
+def test_union_type_response_object(basic_app: Flask) -> None:
+    class ThisResponse(BaseModel):
+        this_field1: str
+
+    @basic_app.get("/api/foo/bar")
+    @pydantic_api()
+    def get_something() -> dict | ThisResponse:
+        return {"field1": "bar"}
+
+    with basic_app.app_context():
+        result = get_openapi_schema()
+
+    assert "ThisResponse" in result["components"]["schemas"]
+    assert (
+        "this_field1" in result["components"]["schemas"]["ThisResponse"]["properties"]
+    )
+    assert "/api/foo/bar" in result["paths"]
+    assert (
+        result["paths"]["/api/foo/bar"]["get"]["responses"]["200"]["content"][
+            "application/json"
+        ]["schema"]["$ref"]
+        == "#/components/schemas/ThisResponse"
+    )
+
+
 def test_path_args_merge(basic_app: Flask) -> None:
     class Body(BaseModel):
         arg1: str
@@ -486,6 +511,33 @@ def test_union_response_same_status_code() -> None:
     }
 
 
+def test_union_type_response_same_status_code() -> None:
+    class ResponseA(BaseModel):
+        field1: str
+
+    class ResponseB(BaseModel):
+        field2: str
+
+    app = Flask("test_app")
+
+    @app.get("/")
+    @pydantic_api()
+    def do_work() -> ResponseA | ResponseB:
+        return ResponseA(field1="val1")
+
+    with app.app_context():
+        result = get_openapi_schema()
+
+    assert result["paths"]["/"]["get"]["responses"]["200"]["content"][
+        "application/json"
+    ]["schema"] == {
+        "oneOf": [
+            {"$ref": "#/components/schemas/ResponseA"},
+            {"$ref": "#/components/schemas/ResponseB"},
+        ]
+    }
+
+
 def test_model_and_uploader_request_body() -> None:
     class FileRequest(BaseModel):
         file1: UploadedFile
@@ -499,6 +551,45 @@ def test_model_and_uploader_request_body() -> None:
     @app.post("/")
     @pydantic_api()
     def do_work(body: Union[FileRequest, OtherRequest]) -> dict:
+        return {}
+
+    with app.app_context():
+        result = get_openapi_schema()
+
+    assert result["paths"]["/"]["post"]["requestBody"] == {
+        "content": {
+            "application/json": {
+                "schema": {
+                    "$ref": "#/components/schemas/OtherRequest",
+                }
+            },
+            "multipart/form-data": {
+                "schema": {
+                    "$ref": "#/components/schemas/FileRequest",
+                }
+            },
+        },
+        "description": "A FileRequest or OtherRequest",
+        "required": True,
+    }
+
+    assert "FileRequest" in result["components"]["schemas"]
+    assert "OtherRequest" in result["components"]["schemas"]
+
+
+def test_model_and_uploader_request_body_with_union_type() -> None:
+    class FileRequest(BaseModel):
+        file1: UploadedFile
+        other_var: str
+
+    class OtherRequest(BaseModel):
+        val1: str
+
+    app = Flask("test_app")
+
+    @app.post("/")
+    @pydantic_api()
+    def do_work(body: FileRequest | OtherRequest) -> dict:
         return {}
 
     with app.app_context():
