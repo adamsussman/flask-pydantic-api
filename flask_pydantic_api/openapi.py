@@ -46,7 +46,7 @@ def get_pydantic_api_path_operations(
         if not rule.methods:
             continue
 
-        path = re.sub(r"<([\w_]+)>", "{\\1}", rule.rule)
+        path = re.sub(r"<([^:]+:)?([\w_]+)>", "{\\2}", rule.rule)
 
         parameters = []
         request_body: Optional[Dict[str, Any]] = None
