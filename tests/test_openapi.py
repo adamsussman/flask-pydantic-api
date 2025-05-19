@@ -94,6 +94,7 @@ def test_basic_schema(basic_app: Flask) -> None:
                                 "description": "A Response"
                             }
                         },
+                        "summary": "Do Work",
                         "tags": []
                     }
                 }
@@ -199,6 +200,7 @@ def test_add_error_response(basic_app: Flask) -> None:
                                 "description": "A SpecialError"
                             }
                         },
+                        "summary": "Do Work",
                         "tags": []
                     }
                 }
