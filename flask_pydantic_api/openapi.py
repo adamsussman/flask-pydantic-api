@@ -27,6 +27,18 @@ try:
 except ImportError:
     pass
 
+PATH_PATTERN = re.compile(r"<(([^:<>]+):)?([\w_]+)>")
+"""Match arguments in paths with optional type in match[1] and name in match[2]."""
+
+PATH_SCHEMA_MAP: Dict[Any, Dict[str, Any]] = {
+    "string": {"type": "string"},
+    "int": {"type": "integer", "minimum": 0},
+    "int(signed=True)": {"type": "integer"},
+    "float": {"type": "number"},
+    "path": {"type": "string", "format": "path"},
+}
+"""Map well known path argument types to JSON schema types."""
+
 
 def get_pydantic_api_path_operations(
     schema_generator: type[GenerateJsonSchema] = DEFAULT_SCHEMA_GENERATOR,
@@ -46,7 +58,10 @@ def get_pydantic_api_path_operations(
         if not rule.methods:
             continue
 
-        path = re.sub(r"<([\w_]+)>", "{\\1}", rule.rule)
+        path = re.sub(PATH_PATTERN, "{\\3}", rule.rule)
+        path_arg_types = {
+            match[2]: match[1] for match in PATH_PATTERN.findall(rule.rule)
+        }
 
         parameters = []
         request_body: Optional[Dict[str, Any]] = None
@@ -184,14 +199,14 @@ def get_pydantic_api_path_operations(
                 and name != request_model_param_name
                 and name != "return"
             ):
+                arg_type = path_arg_types.get(name)
+                schema = PATH_SCHEMA_MAP.get(arg_type, {"type": "string"})
                 parameters.append(
                     {
                         "name": name,
                         "in": "path",
                         "required": True,
-                        "schema": {
-                            "type": "string",
-                        },
+                        "schema": schema,
                     }
                 )
 

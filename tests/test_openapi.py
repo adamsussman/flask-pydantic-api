@@ -332,6 +332,27 @@ def test_path_args_keep(basic_app: Flask) -> None:
     assert "arg1" not in result["components"]["schemas"]["Body"]["properties"]
 
 
+def test_path_args_typed(basic_app: Flask) -> None:
+    class Body(BaseModel):
+        field1: str
+
+    @basic_app.get("/foo/<int:arg1>/bar/<arg2>/baz/<int(signed=True):arg3>")
+    @pydantic_api()
+    def get_foo(arg1: int, arg2: str, arg3: int, body: Body) -> Body:
+        return body
+
+    with basic_app.app_context():
+        result = get_openapi_schema()
+
+    params = result["paths"]["/foo/{arg1}/bar/{arg2}/baz/{arg3}"]["get"]["parameters"]
+    param_schemas = {param["name"]: param["schema"] for param in params}
+    assert param_schemas == {
+        "arg1": {"type": "integer", "minimum": 0},
+        "arg2": {"type": "string"},
+        "arg3": {"type": "integer"},
+    }
+
+
 @require_serializer
 def test_fieldsets_added_to_query_string(basic_app: Flask) -> None:
     class ResponseModel(BaseModel):
