@@ -253,6 +253,10 @@ def pydantic_api(
 
             return response
 
+        nonlocal name
+        if name is None:
+            name = view_func.__name__.replace("_", " ").title()
+
         # Normally wrapping functions with decorators leaves no easy
         # way to tell who is doing the wrapping and for what purpose.
         # This adds some markers that are useful for introspection of
