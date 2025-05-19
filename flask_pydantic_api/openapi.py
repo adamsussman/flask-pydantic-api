@@ -30,7 +30,7 @@ except ImportError:
 PATH_PATTERN = re.compile(r"<(([^:<>]+):)?([\w_]+)>")
 """Match arguments in paths with optional type in match[1] and name in match[2]."""
 
-PATH_SCHEMA_MAP = {
+PATH_SCHEMA_MAP: Dict[Any, Dict[str, Any]] = {
     "string": {"type": "string"},
     "int": {"type": "integer", "minimum": 0},
     "int(signed=True)": {"type": "integer"},
