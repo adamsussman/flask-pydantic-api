@@ -255,6 +255,9 @@ def get_pydantic_api_path_operations(
             if view_func_config.name:
                 paths[path][method]["summary"] = view_func_config.name
 
+            if view_func_config.description:
+                paths[path][method]["description"] = view_func_config.description
+
             if view_func_config.openapi_schema_extra:
                 _deep_update(paths[path][method], view_func_config.openapi_schema_extra)
 

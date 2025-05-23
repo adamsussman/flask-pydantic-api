@@ -666,3 +666,52 @@ def test_request_model_exploded_in_query_string() -> None:
         }
     ]
     assert "Params" in result["components"]["schemas"]
+
+
+EXPECTED_DESCRIPTION = (
+    "Apply the Fourer-Gauss algorithm to the substantial supports of the curve\n"
+    "in order to determine the foo."
+)
+
+
+def test_default_name_and_description_in_decorator(basic_app: Flask) -> None:
+    class Body(BaseModel):
+        field1: str
+
+    @basic_app.get("/foo")
+    @pydantic_api(
+        name="Calculate The Foo",
+        description="""
+        Apply the Fourer-Gauss algorithm to the substantial supports of the curve
+        in order to determine the foo.
+    """,
+    )
+    def get_foo() -> Body:
+        """Get the foo docstring."""
+        return Body(field1="foo")
+
+    with basic_app.app_context():
+        result = get_openapi_schema()
+
+    assert result["paths"]["/foo"]["get"]["summary"] == "Calculate The Foo"
+    assert result["paths"]["/foo"]["get"]["description"] == EXPECTED_DESCRIPTION
+
+
+def test_default_name_and_description_from_view_func(basic_app: Flask) -> None:
+    class Body(BaseModel):
+        field1: str
+
+    @basic_app.get("/foo")
+    @pydantic_api()
+    def get_foo() -> Body:
+        """
+        Apply the Fourer-Gauss algorithm to the substantial supports of the curve
+        in order to determine the foo.
+        """
+        return Body(field1="foo")
+
+    with basic_app.app_context():
+        result = get_openapi_schema()
+
+    assert result["paths"]["/foo"]["get"]["summary"] == "Get Foo"
+    assert result["paths"]["/foo"]["get"]["description"] == EXPECTED_DESCRIPTION

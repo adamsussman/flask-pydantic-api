@@ -45,6 +45,7 @@ DT = TypeVar("DT", bound=Dict[str, Any])
 
 class EndpointConfig(BaseModel):
     name: Optional[str] = None
+    description: Optional[str] = None
     tags: Optional[List[str]] = None
     openapi_schema_extra: Optional[Dict[str, Any]] = None
     success_status_code: int
@@ -139,10 +140,28 @@ EndpointReturnValue = (
 )
 
 
+def unindent_text(text: str) -> str:
+    """Strip leading and trailing lines from the given text and then as much leading
+    unindent as possible from the whole block.
+    """
+    lines = text.splitlines()
+    while lines and (lines[0].isspace() or lines[0] == ""):
+        lines = lines[1:]
+    while lines and (lines[-1].isspace() or lines[-1] == ""):
+        lines = lines[:-1]
+
+    indent = min(len(line) - len(line.lstrip()) for line in lines) if lines else 0
+    if indent:
+        lines = [line[indent:] for line in lines]
+
+    return "\n".join(lines)
+
+
 # decorator that can be composed with regular Flask @blueprint.get/post/etc decorators.
 # This decorator uses type signatures to figure out the request and response pydantic models.
 def pydantic_api(
     name: Optional[str] = None,
+    description: Optional[str] = None,
     tags: Optional[List[str]] = None,
     success_status_code: int = 200,
     success_status_code_by_response_model: Optional[Dict[Type[BaseModel], int]] = None,
@@ -253,9 +272,15 @@ def pydantic_api(
 
             return response
 
+        # Resolve default name and description from the view function
         nonlocal name
         if name is None:
             name = view_func.__name__.replace("_", " ").title()
+        nonlocal description
+        if description is None:
+            description = view_func.__doc__
+        if description:
+            description = unindent_text(description)
 
         # Normally wrapping functions with decorators leaves no easy
         # way to tell who is doing the wrapping and for what purpose.
@@ -263,6 +288,7 @@ def pydantic_api(
         # endpoints (such as generating schema).
         wrapped_endpoint.__pydantic_api__ = EndpointConfig(  # type: ignore
             name=name,
+            description=description,
             tags=tags,
             success_status_code=success_status_code,
             success_status_code_by_response_model=success_status_code_by_response_model,
