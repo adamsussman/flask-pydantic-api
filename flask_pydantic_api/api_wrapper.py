@@ -145,12 +145,13 @@ def unindent_text(text: str) -> str:
     unindent as possible from the whole block.
     """
     lines = text.splitlines()
-    while lines and (lines[0].isspace() or lines[0] == ""):
+    lines = [ln.rstrip() for ln in lines]
+    while lines and (not lines[0] or lines[0].isspace()):
         lines = lines[1:]
-    while lines and (lines[-1].isspace() or lines[-1] == ""):
+    while lines and (not lines[-1] or lines[-1].isspace()):
         lines = lines[:-1]
 
-    indent = min(len(line) - len(line.lstrip()) for line in lines) if lines else 0
+    indent = min(len(ln) - len(ln.lstrip()) for ln in lines if ln) if lines else 0
     if indent:
         lines = [line[indent:] for line in lines]
 
