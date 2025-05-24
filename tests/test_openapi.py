@@ -669,8 +669,11 @@ def test_request_model_exploded_in_query_string() -> None:
 
 
 EXPECTED_DESCRIPTION = (
-    "Apply the Fourer-Gauss algorithm to the substantial supports of the curve\n"
-    "in order to determine the foo."
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit,\n"
+    "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n"
+    "\n"
+    "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris\n"
+    "nisi ut aliquip ex ea commodo consequat."
 )
 
 
@@ -682,9 +685,12 @@ def test_default_name_and_description_in_decorator(basic_app: Flask) -> None:
     @pydantic_api(
         name="Calculate The Foo",
         description="""
-        Apply the Fourer-Gauss algorithm to the substantial supports of the curve
-        in order to determine the foo.
-    """,
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+            sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+
+            Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris
+            nisi ut aliquip ex ea commodo consequat.
+        """,
     )
     def get_foo() -> Body:
         """Get the foo docstring."""
@@ -705,8 +711,11 @@ def test_default_name_and_description_from_view_func(basic_app: Flask) -> None:
     @pydantic_api()
     def get_foo() -> Body:
         """
-        Apply the Fourer-Gauss algorithm to the substantial supports of the curve
-        in order to determine the foo.
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+        sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+
+        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris
+        nisi ut aliquip ex ea commodo consequat.
         """
         return Body(field1="foo")
 
