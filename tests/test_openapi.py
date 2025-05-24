@@ -94,6 +94,7 @@ def test_basic_schema(basic_app: Flask) -> None:
                                 "description": "A Response"
                             }
                         },
+                        "summary": "Do Work",
                         "tags": []
                     }
                 }
@@ -199,6 +200,7 @@ def test_add_error_response(basic_app: Flask) -> None:
                                 "description": "A SpecialError"
                             }
                         },
+                        "summary": "Do Work",
                         "tags": []
                     }
                 }
@@ -643,3 +645,61 @@ def test_request_model_exploded_in_query_string() -> None:
         }
     ]
     assert "Params" in result["components"]["schemas"]
+
+
+EXPECTED_DESCRIPTION = (
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit,\n"
+    "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n"
+    "\n"
+    "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris\n"
+    "nisi ut aliquip ex ea commodo consequat."
+)
+
+
+def test_default_name_and_description_in_decorator(basic_app: Flask) -> None:
+    class Body(BaseModel):
+        field1: str
+
+    @basic_app.get("/foo")
+    @pydantic_api(
+        name="Calculate The Foo",
+        description="""
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+            sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+
+            Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris
+            nisi ut aliquip ex ea commodo consequat.
+        """,
+    )
+    def get_foo() -> Body:
+        """Get the foo docstring."""
+        return Body(field1="foo")
+
+    with basic_app.app_context():
+        result = get_openapi_schema()
+
+    assert result["paths"]["/foo"]["get"]["summary"] == "Calculate The Foo"
+    assert result["paths"]["/foo"]["get"]["description"] == EXPECTED_DESCRIPTION
+
+
+def test_default_name_and_description_from_view_func(basic_app: Flask) -> None:
+    class Body(BaseModel):
+        field1: str
+
+    @basic_app.get("/foo")
+    @pydantic_api()
+    def get_foo() -> Body:
+        """
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+        sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+
+        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris
+        nisi ut aliquip ex ea commodo consequat.
+        """
+        return Body(field1="foo")
+
+    with basic_app.app_context():
+        result = get_openapi_schema()
+
+    assert result["paths"]["/foo"]["get"]["summary"] == "Get Foo"
+    assert result["paths"]["/foo"]["get"]["description"] == EXPECTED_DESCRIPTION
