@@ -6,11 +6,13 @@ def test_unindent_text():
         "    Line 1, followed by an empty line which is tricky.\n"
         "\n"
         "    Then another line with right padding.     \n"
+        "        Finally one with additional indent\n"
     )
     expected = (
         "Line 1, followed by an empty line which is tricky.\n"
         "\n"
-        "Then another line with right padding."
+        "Then another line with right padding.\n"
+        "    Finally one with additional indent"
     )
 
     assert actual == expected
