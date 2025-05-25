@@ -119,7 +119,8 @@ Note that you may wish to customize your schema results more than this module pr
 
 `@pydantic_api` accepts the following parameters:
 
-* `name`: str - Name for this operation that will be used in the OpenAPI schema
+* `name`: str - Name for this operation that will be used as the `summary` field in the OpenAPI schema
+* `description`: str - Longer description for this operation that will be used as the `description` field in the OpenAPI schema
 * `Tags`: List[str] - Tags that will be used for this operation in the OpenAPI schema
 * `success_status_code`: int = 200 - HTTP Status code that will be used on successful response
 * `success_status_code_by_response_model`: Dict[Type[BaseModel], int] = None - If the return type of the method is a Union of multiple BaseModels, this dict can map those models to specific status codes
@@ -132,8 +133,10 @@ Note that you may wish to customize your schema results more than this module pr
 
 Flask configuration:
 
-* `FLASK_PYDANTIC_API_RENDER_ERRORS`: bool = True.  If true, pydantic validation errors will be rendered to json and returned as a normal response.  If false, pydantic errors will yield a standard ValidationError exception.
+* `FLASK_PYDANTIC_API_RENDER_ERRORS`: bool = False.  If true, pydantic validation errors will be rendered to json and returned as a normal response.  If false, pydantic errors will yield a standard ValidationError exception.
 * `FLASK_PYDANTIC_API_ERROR_STATUS_CODE`: int = 400.  If `FLASK_PYDANTIC_API_RENDER_ERRORS` is true, this is the HTTP status code that will be returned.
+* `FLASK_PYDANTIC_API_NAME_FROM_FUNCTION`: bool = False. If true, and `name` is not supplied to `@pydantic_api` then a default value is derived from the decorated function name. 
+* `FLASK_PYDANTIC_API_DESCRIPTION_FROM_DOCSTRING`: bool = False. If true, and `description` is not supplied to `@pydantic_api` then a default value is taken from the decorated function's docstrings. 
 
 <a name="patharguments"></a>
 ## Path Parameter Folding
