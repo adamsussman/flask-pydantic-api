@@ -45,6 +45,7 @@ DT = TypeVar("DT", bound=Dict[str, Any])
 
 class EndpointConfig(BaseModel):
     name: Optional[str] = None
+    description: Optional[str] = None
     tags: Optional[List[str]] = None
     openapi_schema_extra: Optional[Dict[str, Any]] = None
     success_status_code: int
@@ -143,6 +144,7 @@ EndpointReturnValue = (
 # This decorator uses type signatures to figure out the request and response pydantic models.
 def pydantic_api(
     name: Optional[str] = None,
+    description: Optional[str] = None,
     tags: Optional[List[str]] = None,
     success_status_code: int = 200,
     success_status_code_by_response_model: Optional[Dict[Type[BaseModel], int]] = None,
@@ -259,6 +261,7 @@ def pydantic_api(
         # endpoints (such as generating schema).
         wrapped_endpoint.__pydantic_api__ = EndpointConfig(  # type: ignore
             name=name,
+            description=description,
             tags=tags,
             success_status_code=success_status_code,
             success_status_code_by_response_model=success_status_code_by_response_model,
