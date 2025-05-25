@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from pydantic.json_schema import GenerateJsonSchema
 
 from .api_wrapper import EndpointConfig
-from .utils import get_annotated_models, model_has_uploaded_file_type
+from .utils import get_annotated_models, model_has_uploaded_file_type, unindent_text
 
 HTTP_METHODS = set(["get", "post", "patch", "delete", "put"])
 
@@ -252,11 +252,21 @@ def get_pydantic_api_path_operations(
                 else:
                     paths[path][method]["requestBody"] = request_body
 
-            if view_func_config.name:
-                paths[path][method]["summary"] = view_func_config.name
+            summary = view_func_config.name
+            if not summary and current_app.config.get(
+                "FLASK_PYDANTIC_API_NAME_FROM_FUNCTION", False
+            ):
+                summary = view_func.__name__.replace("_", " ").title()
+            if summary:
+                paths[path][method]["summary"] = summary
 
-            if view_func_config.description:
-                paths[path][method]["description"] = view_func_config.description
+            description = view_func_config.description
+            if not description and current_app.config.get(
+                "FLASK_PYDANTIC_API_DESCRIPTION_FROM_DOCSTRING", False
+            ):
+                description = view_func.__doc__
+            if description:
+                paths[path][method]["description"] = unindent_text(description)
 
             if view_func_config.openapi_schema_extra:
                 _deep_update(paths[path][method], view_func_config.openapi_schema_extra)

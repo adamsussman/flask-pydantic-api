@@ -140,24 +140,6 @@ EndpointReturnValue = (
 )
 
 
-def unindent_text(text: str) -> str:
-    """Strip leading and trailing lines from the given text and then as much leading
-    unindent as possible from the whole block.
-    """
-    lines = text.splitlines()
-    lines = [ln.rstrip() for ln in lines]
-    while lines and (not lines[0] or lines[0].isspace()):
-        lines = lines[1:]
-    while lines and (not lines[-1] or lines[-1].isspace()):
-        lines = lines[:-1]
-
-    indent = min(len(ln) - len(ln.lstrip()) for ln in lines if ln) if lines else 0
-    if indent:
-        lines = [line[indent:] for line in lines]
-
-    return "\n".join(lines)
-
-
 # decorator that can be composed with regular Flask @blueprint.get/post/etc decorators.
 # This decorator uses type signatures to figure out the request and response pydantic models.
 def pydantic_api(
@@ -272,16 +254,6 @@ def pydantic_api(
                 )
 
             return response
-
-        # Resolve default name and description from the view function
-        nonlocal name
-        if name is None:
-            name = view_func.__name__.replace("_", " ").title()
-        nonlocal description
-        if description is None:
-            description = view_func.__doc__
-        if description:
-            description = unindent_text(description)
 
         # Normally wrapping functions with decorators leaves no easy
         # way to tell who is doing the wrapping and for what purpose.

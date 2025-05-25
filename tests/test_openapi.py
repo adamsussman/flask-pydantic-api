@@ -94,7 +94,6 @@ def test_basic_schema(basic_app: Flask) -> None:
                                 "description": "A Response"
                             }
                         },
-                        "summary": "Do Work",
                         "tags": []
                     }
                 }
@@ -200,7 +199,6 @@ def test_add_error_response(basic_app: Flask) -> None:
                                 "description": "A SpecialError"
                             }
                         },
-                        "summary": "Do Work",
                         "tags": []
                     }
                 }
@@ -677,7 +675,7 @@ EXPECTED_DESCRIPTION = (
 )
 
 
-def test_default_name_and_description_in_decorator(basic_app: Flask) -> None:
+def test_name_and_description_in_decorator(basic_app: Flask) -> None:
     class Body(BaseModel):
         field1: str
 
@@ -703,7 +701,7 @@ def test_default_name_and_description_in_decorator(basic_app: Flask) -> None:
     assert result["paths"]["/foo"]["get"]["description"] == EXPECTED_DESCRIPTION
 
 
-def test_default_name_and_description_from_view_func(basic_app: Flask) -> None:
+def test_default_name_from_function_name(basic_app: Flask) -> None:
     class Body(BaseModel):
         field1: str
 
@@ -719,8 +717,50 @@ def test_default_name_and_description_from_view_func(basic_app: Flask) -> None:
         """
         return Body(field1="foo")
 
+    basic_app.config["FLASK_PYDANTIC_API_NAME_FROM_FUNCTION"] = True
+
     with basic_app.app_context():
         result = get_openapi_schema()
 
     assert result["paths"]["/foo"]["get"]["summary"] == "Get Foo"
+
+
+def test_default_description_from_function_docstring(basic_app: Flask) -> None:
+    class Body(BaseModel):
+        field1: str
+
+    @basic_app.get("/foo")
+    @pydantic_api()
+    def get_foo() -> Body:
+        """
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+        sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+
+        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris
+        nisi ut aliquip ex ea commodo consequat.
+        """
+        return Body(field1="foo")
+
+    basic_app.config["FLASK_PYDANTIC_API_DESCRIPTION_FROM_DOCSTRING"] = True
+
+    with basic_app.app_context():
+        result = get_openapi_schema()
+
     assert result["paths"]["/foo"]["get"]["description"] == EXPECTED_DESCRIPTION
+
+
+def test_empty_name_and_description(basic_app: Flask) -> None:
+    class Body(BaseModel):
+        field1: str
+
+    @basic_app.get("/foo")
+    @pydantic_api()
+    def get_foo() -> Body:
+        """Lorem ipsum dolor sit amet."""
+        return Body(field1="foo")
+
+    with basic_app.app_context():
+        result = get_openapi_schema()
+
+    assert "summary" not in result["paths"]["/foo"]["get"]
+    assert "description" not in result["paths"]["/foo"]["get"]

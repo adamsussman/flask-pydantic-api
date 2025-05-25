@@ -6,7 +6,6 @@ from pydantic import BaseModel
 from pytest_mock.plugin import MockerFixture
 
 from flask_pydantic_api import pydantic_api
-from flask_pydantic_api.api_wrapper import unindent_text
 from tests.utils import has_enhanced_serializer
 
 
@@ -533,22 +532,3 @@ def test_non_dict_json_body_str() -> None:
     assert response.status_code == 400, response.json
     assert "JSON request bodies must be a dictionary, not a" in response.text
     assert "str" in response.text
-
-
-def test_unindent_text():
-    actual = unindent_text(
-        "    Line 1, followed by an empty line which is tricky.\n"
-        "\n"
-        "    Then another line with right padding.     \n"
-    )
-    expected = (
-        "Line 1, followed by an empty line which is tricky.\n"
-        "\n"
-        "Then another line with right padding."
-    )
-
-    assert actual == expected
-
-
-def test_unindent_text__spaces():
-    assert unindent_text("\n" "    \n" "\n") == ""
