@@ -1,6 +1,7 @@
 import re
 from collections import defaultdict
 from functools import partial
+from textwrap import dedent
 from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
 
 from flask import current_app
@@ -252,8 +253,21 @@ def get_pydantic_api_path_operations(
                 else:
                     paths[path][method]["requestBody"] = request_body
 
-            if view_func_config.name:
-                paths[path][method]["summary"] = view_func_config.name
+            summary = view_func_config.name
+            if not summary and current_app.config.get(
+                "FLASK_PYDANTIC_API_NAME_FROM_FUNCTION", False
+            ):
+                summary = view_func.__name__.replace("_", " ").title()
+            if summary:
+                paths[path][method]["summary"] = summary
+
+            description = view_func_config.description
+            if not description and current_app.config.get(
+                "FLASK_PYDANTIC_API_DESCRIPTION_FROM_DOCSTRING", False
+            ):
+                description = view_func.__doc__
+            if description:
+                paths[path][method]["description"] = dedent(description).strip()
 
             if view_func_config.openapi_schema_extra:
                 _deep_update(paths[path][method], view_func_config.openapi_schema_extra)
