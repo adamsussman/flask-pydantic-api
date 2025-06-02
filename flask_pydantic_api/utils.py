@@ -172,21 +172,3 @@ def sync_async_wrapper(
             return executor.submit(run_in_thread).result()
 
         return sync_runner()
-
-
-def unindent_text(text: str) -> str:
-    """Strip leading and trailing lines from the given text and then as much leading
-    unindent as possible from the whole block.
-    """
-    lines = text.splitlines()
-    lines = [ln.rstrip() for ln in lines]
-    while lines and (not lines[0] or lines[0].isspace()):
-        lines = lines[1:]
-    while lines and (not lines[-1] or lines[-1].isspace()):
-        lines = lines[:-1]
-
-    indent = min(len(ln) - len(ln.lstrip()) for ln in lines if ln) if lines else 0
-    if indent:
-        lines = [line[indent:] for line in lines]
-
-    return "\n".join(lines)

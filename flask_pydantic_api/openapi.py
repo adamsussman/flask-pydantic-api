@@ -1,6 +1,7 @@
 import re
 from collections import defaultdict
 from functools import partial
+from textwrap import dedent
 from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
 
 from flask import current_app
@@ -8,7 +9,7 @@ from pydantic import BaseModel
 from pydantic.json_schema import GenerateJsonSchema
 
 from .api_wrapper import EndpointConfig
-from .utils import get_annotated_models, model_has_uploaded_file_type, unindent_text
+from .utils import get_annotated_models, model_has_uploaded_file_type
 
 HTTP_METHODS = set(["get", "post", "patch", "delete", "put"])
 
@@ -266,7 +267,7 @@ def get_pydantic_api_path_operations(
             ):
                 description = view_func.__doc__
             if description:
-                paths[path][method]["description"] = unindent_text(description)
+                paths[path][method]["description"] = dedent(description).strip()
 
             if view_func_config.openapi_schema_extra:
                 _deep_update(paths[path][method], view_func_config.openapi_schema_extra)
