@@ -1,3 +1,17 @@
+1.7.0
+-----
+
+Released 2025-06-02
+
+- Fix how union types are serialized in responses when specified with | shorthand.  @mtblanton
+  https://github.com/adamsussman/flask-pydantic-api/pull/11
+- Add support for Flask type specification in Flask route paths. @logi
+  https://github.com/adamsussman/flask-pydantic-api/pull/12
+- Support description in decorator and defaults from view_func @logi
+  https://github.com/adamsussman/flask-pydantic-api/pull/13
+
+
+
 1.6.0
 -----
 
